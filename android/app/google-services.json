@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "513443950080",
+    "firebase_url": "https://talker-dee6a.firebaseio.com",
+    "project_id": "talker-dee6a",
+    "storage_bucket": "talker-dee6a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:513443950080:android:ea196a544db75753",
+        "android_client_info": {
+          "package_name": "com.ahmetyildirim.talkerapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "513443950080-7nhsn930dnss21ta25vko1ehfnlm2ntj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAR-cVOYsid9KXmeVZCSCCJ6uU8mhYOBwI"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
