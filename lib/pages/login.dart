@@ -4,6 +4,7 @@ import 'package:talker_app/common/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:toast/toast.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
@@ -12,6 +13,31 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = new TextEditingController();
 
   final TextEditingController _passwordController = new TextEditingController();
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+  void loginWithGoogle() async{
+     try {
+       
+    GoogleSignInAccount googleUser = await googleSignIn.signIn();
+    GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    FirebaseUser user = await FirebaseAuth.instance.signInWithGoogle(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+      Toast.show("Logged in successfully", context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
+        Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => Chat(
+                          peerId: user.uid,
+                          peerMail: user.displayName,
+                        )));
+          
+    } catch (e) {
+      Toast.show(e.message, context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
+    }
+  }
   void login() async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
@@ -129,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
                       width: 400.0,
                       child: FlatButton(
                           shape: shapeBorderroundedWith30,
-                          onPressed: () {},
+                          onPressed: loginWithGoogle,
                           child: Text(
                             'SIGN IN WITH GOOGLE',
                             style: TextStyle(fontSize: 16.0),
