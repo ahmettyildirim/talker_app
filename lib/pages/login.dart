@@ -5,39 +5,73 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:toast/toast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:location/location.dart';
+import 'dart:async';
+
 class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  Map<String, double> _location;
   final TextEditingController _emailController = new TextEditingController();
-
   final TextEditingController _passwordController = new TextEditingController();
   final GoogleSignIn googleSignIn = GoogleSignIn();
-  void loginWithGoogle() async{
-     try {
-       
-    GoogleSignInAccount googleUser = await googleSignIn.signIn();
-    GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    FirebaseUser user = await FirebaseAuth.instance.signInWithGoogle(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+  var currentLocation = <String, double>{};
+  var location = new Location();
+  StreamSubscription<Map<String, double>> locationSubscription;
+
+  void initPlatformState() async {
+    Map<String, double> myLocation;
+    try {
+      myLocation = await location.getLocation();
+    } on PlatformException catch (e) {
+      if (e.code == 'PERMISSION_DENİED') {
+        Toast.show("Please allow permission for locations", context,
+            duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
+        myLocation = null;
+      }
+    }
+    currentLocation = myLocation;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    currentLocation['latitude'] = 0.0;
+    currentLocation['longitude'] = 0.0;
+    initPlatformState();
+    locationSubscription =
+        location.onLocationChanged().listen((Map<String, double> result) {
+      setState(() {
+        currentLocation = result;
+      });
+    });
+  }
+
+  void loginWithGoogle() async {
+    try {
+      GoogleSignInAccount googleUser = await googleSignIn.signIn();
+      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      FirebaseUser user = await FirebaseAuth.instance.signInWithGoogle(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
       Toast.show("Logged in successfully", context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-        Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => Chat(
-                          peerId: user.uid,
-                          peerMail: user.displayName,
-                        )));
-          
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => Chat(
+                    peerId: user.uid,
+                    peerMail: user.displayName,
+                  )));
     } catch (e) {
       Toast.show(e.message, context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
     }
   }
+
   void login() async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
@@ -46,32 +80,33 @@ class _LoginPageState extends State<LoginPage> {
               email: _emailController.text, password: _passwordController.text);
       Toast.show("Logged in successfully", context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-        Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => Chat(
-                          peerId: user.uid,
-                          peerMail: _emailController.text,
-                        )));
-          
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => Chat(
+                    peerId: user.uid,
+                    peerMail: _emailController.text,
+                  )));
     } catch (e) {
       Toast.show(e.message, context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
     }
   }
+
   void signup() async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
-      try {
-        FirebaseUser user = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-                email: _emailController.text, password: _passwordController.text);
-        Toast.show("Created  successfully ${user.email}", context,
-            duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
-      } catch (e) {
-        Toast.show(e.message, context,
-            duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
-      }
+    try {
+      FirebaseUser user = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+              email: _emailController.text, password: _passwordController.text);
+      Toast.show("Created  successfully ${user.email}", context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
+    } catch (e) {
+      Toast.show(e.message, context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
     }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
                           shape: shapeBorderroundedWith30,
                           onPressed: () {},
                           child: Text(
-                            'SIGN IN WITH FACEBOOkK',
+                            'SIGN IN WITH FACEBOOK',
                             style: TextStyle(fontSize: 16.0),
                           ),
                           color: Color(0xff3b5998),
@@ -184,6 +219,10 @@ class _LoginPageState extends State<LoginPage> {
                           textColor: Colors.white,
                           padding: EdgeInsets.fromLTRB(30.0, 15.0, 30.0, 15.0)),
                     ),
+                    Text(
+                        'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('latitude') ? currentLocation["latitude"] : null}'),
+                    Text(
+                        'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('longitude') ? currentLocation["longitude"] : null}')
                   ],
                 ),
               ),
