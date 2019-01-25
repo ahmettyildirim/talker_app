@@ -1,14 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toast/toast.dart';
 
 class Chat extends StatelessWidget {
-  final String peerId;
-  final String peerMail;
+  final FirebaseUser user;
 
-  Chat({Key key, @required this.peerId, @required this.peerMail})
-      : super(key: key);
+  Chat({Key key, @required this.user}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,40 +19,36 @@ class Chat extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ChatScreen(
-        peerId: peerId,
-        peerMail: peerMail,
-      ),
+      body: ChatScreen(user: user),
     );
   }
 }
 
 class ChatScreen extends StatefulWidget {
-  final String peerId;
-  final String peerMail;
+  final FirebaseUser user;
 
-  ChatScreen({Key key, @required this.peerId, @required this.peerMail})
-      : super(key: key);
+  ChatScreen({
+    Key key,
+    @required this.user,
+  }) : super(key: key);
 
   @override
-  State createState() =>
-      new ChatScreenState(peerId: peerId, peerMail: peerMail);
+  State createState() => new ChatScreenState(user: user);
 }
 
 class ChatScreenState extends State<ChatScreen> {
-  ChatScreenState({Key key, @required this.peerId, @required this.peerMail});
+  ChatScreenState({Key key, @required this.user});
 
   final TextEditingController textEditingController =
       new TextEditingController();
   final ScrollController listScrollController = new ScrollController();
   final FocusNode focusNode = new FocusNode();
-  String peerId;
-  String peerMail;
+  FirebaseUser user;
 
   bool isLoading = false;
   bool isShowSticker = false;
-  bool toastShowed=false;
-  int latestShowedDateDay=0;
+  bool toastShowed = false;
+  int latestShowedDateDay = 0;
   var listMessage;
   void onSendMessage(String content, int type) {
     // type: 0 = text, 1 = image, 2 = sticker
@@ -68,8 +63,8 @@ class ChatScreenState extends State<ChatScreen> {
         await transaction.set(
           documentReference,
           {
-            'senderId': peerId,
-            'sender': peerMail,
+            'senderId': user.uid,
+            'sender': user.displayName,
             'text': content,
             'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
           },
@@ -86,7 +81,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool isLastMessageLeft(int index) {
     if ((index > 0 &&
             listMessage != null &&
-            listMessage[index - 1]['senderId'] == peerId) ||
+            listMessage[index - 1]['senderId'] == user.uid) ||
         index == 0) {
       return true;
     } else {
@@ -97,7 +92,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool isLastMessageRight(int index) {
     if ((index > 0 &&
             listMessage != null &&
-            listMessage[index - 1]['senderId'] != peerId) ||
+            listMessage[index - 1]['senderId'] != user.uid) ||
         index == 0) {
       return true;
     } else {
@@ -110,17 +105,17 @@ class ChatScreenState extends State<ChatScreen> {
     String senderId = document.data["senderId"];
     DateTime date = DateTime.fromMillisecondsSinceEpoch(
         int.parse(document.data['timestamp']));
-    if(date.day != DateTime.now().day && date.day != latestShowedDateDay){
-       Toast.show('${date.day}.${date.month}.${date.year}', context,
+    if (date.day != DateTime.now().day && date.day != latestShowedDateDay) {
+      Toast.show('${date.day}.${date.month}.${date.year}', context,
           duration: Toast.LENGTH_SHORT, gravity: Toast.TOP);
-        latestShowedDateDay=date.day;
-      }
+      latestShowedDateDay = date.day;
+    }
     // Right (my message)
     return Row(
       children: <Widget>[
         Container(
           child: Column(children: <Widget>[
-            SizedBox(
+             SizedBox(
               width: double.infinity,
               child: Container(
                 child: Text(
@@ -154,7 +149,6 @@ class ChatScreenState extends State<ChatScreen> {
               width: double.infinity,
               child: Container(
                 child: Text(
-                  
                   "${date.hour}:${date.minute}",
                   textAlign: TextAlign.right,
                   style: TextStyle(color: Colors.grey),
@@ -170,8 +164,9 @@ class ChatScreenState extends State<ChatScreen> {
               bottom: isLastMessageRight(index) ? 20.0 : 10.0, right: 10.0),
         )
       ],
-      mainAxisAlignment:
-          senderId == peerId ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: senderId == user.uid
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
     );
   }
 
@@ -268,12 +263,12 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   Widget buildListMessage() {
-    
     return Flexible(
       child: StreamBuilder(
         stream: Firestore.instance
             .collection('conversations')
             .orderBy('timestamp', descending: true)
+            .limit(20)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {

@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:talker_app/pages/chat.dart';
+import 'package:talker_app/widgets/facebook_signin.dart';
+import 'package:talker_app/widgets/google_signin.dart';
 import 'package:toast/toast.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:location/location.dart';
 import 'dart:async';
 
@@ -13,10 +14,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  Map<String, double> _location;
   final TextEditingController _emailController = new TextEditingController();
   final TextEditingController _passwordController = new TextEditingController();
-  final GoogleSignIn googleSignIn = GoogleSignIn();
   var currentLocation = <String, double>{};
   var location = new Location();
   StreamSubscription<Map<String, double>> locationSubscription;
@@ -49,29 +48,8 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  void loginWithGoogle() async {
-    try {
-      GoogleSignInAccount googleUser = await googleSignIn.signIn();
-      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      FirebaseUser user = await FirebaseAuth.instance.signInWithGoogle(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      Toast.show("Logged in successfully", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => Chat(
-                    peerId: user.uid,
-                    peerMail: user.displayName,
-                  )));
-    } catch (e) {
-      Toast.show(e.message, context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-    }
-  }
 
+  
   void login() async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
@@ -84,8 +62,7 @@ class _LoginPageState extends State<LoginPage> {
           context,
           MaterialPageRoute(
               builder: (context) => Chat(
-                    peerId: user.uid,
-                    peerMail: _emailController.text,
+                   user: user,
                   )));
     } catch (e) {
       Toast.show(e.message, context,
@@ -188,36 +165,14 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(
                       width: 400.0,
-                      child: FlatButton(
-                          shape: shapeBorderroundedWith30,
-                          onPressed: loginWithGoogle,
-                          child: Text(
-                            'SIGN IN WITH GOOGLE',
-                            style: TextStyle(fontSize: 16.0),
-                          ),
-                          color: Color(0xffdd4b39),
-                          highlightColor: Color(0xffff7f7f),
-                          splashColor: Colors.transparent,
-                          textColor: Colors.white,
-                          padding: EdgeInsets.fromLTRB(30.0, 15.0, 30.0, 15.0)),
+                      child: SignInWithGoogle()
                     ),
                     SizedBox(
                       height: 10.0,
                     ),
                     SizedBox(
                       width: 400.0,
-                      child: FlatButton(
-                          shape: shapeBorderroundedWith30,
-                          onPressed: () {},
-                          child: Text(
-                            'SIGN IN WITH FACEBOOK',
-                            style: TextStyle(fontSize: 16.0),
-                          ),
-                          color: Color(0xff3b5998),
-                          highlightColor: Color(0xffff7f7f),
-                          splashColor: Colors.transparent,
-                          textColor: Colors.white,
-                          padding: EdgeInsets.fromLTRB(30.0, 15.0, 30.0, 15.0)),
+                      child: SignInWithFacebook()
                     ),
                     Text(
                         'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('latitude') ? currentLocation["latitude"] : null}'),
