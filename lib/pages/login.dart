@@ -3,13 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:talker_app/pages/chat.dart';
+import 'package:talker_app/pages/home.dart';
 import 'package:talker_app/widgets/google_signin.dart';
 import 'package:talker_app/widgets/login_form.dart';
 import 'package:toast/toast.dart';
 import 'package:location/location.dart';
 import 'dart:async';
-import 'package:rflutter_alert/rflutter_alert.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
@@ -18,10 +19,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = new TextEditingController();
   final TextEditingController _passwordController = new TextEditingController();
-  final TextEditingController _resetEmailController = new TextEditingController();
   var currentLocation = <String, double>{};
   var location = new Location();
-  final _formKey = GlobalKey<FormState>();
+  bool isLoggedIn = false;
+  SharedPreferences prefs;
+  FirebaseAuth auth;
   StreamSubscription<Map<String, double>> locationSubscription;
 
   void initPlatformState() async {
@@ -50,41 +52,44 @@ class _LoginPageState extends State<LoginPage> {
         currentLocation = result;
       });
     });
+
+    isSignedIn();
   }
 
-  void login() async {
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
+  void isSignedIn() async {
     try {
-      FirebaseUser user = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-              email: _emailController.text, password: _passwordController.text);
-      Toast.show("Logged in successfully", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      Navigator.push(
+      GoogleSignIn _googleSignIn = new GoogleSignIn(
+        scopes: [
+          'email',
+          'https://www.googleapis.com/auth/contacts.readonly',
+        ],
+      );
+      FirebaseUser user;
+      prefs = await SharedPreferences.getInstance();
+      bool isSignedIn = await _googleSignIn.isSignedIn();
+
+      if (isSignedIn) {
+        GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+        GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        await FirebaseAuth.instance.reauthenticateWithGoogleCredential(
+            accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+      } else {
+        var id = prefs.getString('id') ?? '';
+        if (id.isNotEmpty) {
+          await FirebaseAuth.instance.reauthenticateWithEmailAndPassword(
+              email: prefs.getString("email"),
+              password: prefs.getString("password"));
+        }
+      }
+      user = await FirebaseAuth.instance.currentUser();
+      if (user != null)
+        Navigator.push(
           context,
-          MaterialPageRoute(
-              builder: (context) => Chat(
-                    user: user,
-                  )));
-    } catch (e) {
-      Toast.show(e.message, context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-    }
+          MaterialPageRoute(builder: (context) => HomePage(user)),
+        );
+    } catch (e) {}
   }
 
-  
-  void resetPassword(String mailAddress) async {
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
-    try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: mailAddress);
-      Toast.show("Reset mail has sent you mail address", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-    } catch (e) {
-      Toast.show(e.message, context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-    }
-  }
 
   void signup() async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
@@ -159,144 +164,58 @@ class _LoginPageState extends State<LoginPage> {
             child: SingleChildScrollView(
               child: Container(
                 padding: EdgeInsets.only(left: 10.0, right: 10.0),
-                child: Column(
+                child: Stack(
                   children: <Widget>[
-                    Container(
-                      width: 250.0,
-                      height: 250.0,
-                      alignment: Alignment.center,
-                      decoration: new BoxDecoration(
-                        image: DecorationImage(
-                          image: new ExactAssetImage('assets/logo.png'),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    LoginForm(),
-                    // TextField(
-                    //     controller: _emailController,
-                    //     keyboardType: TextInputType.emailAddress,
-                    //     style: genericTextStyle,
-                    //     decoration: InputDecoration(
-                    //       // fillColor: Color(0xffe9e9e9),
-                    //       labelText: "Email",
-                    //       labelStyle: genericTextStyle,
-                    //       prefixIcon: Icon(
-                    //         Icons.email,
-                    //         color: Color(0xffe9e9e9),
-                    //         size: 20.0,
-                    //       ), // icon is 48px widget.
-                    //     )),
-                    // SizedBox(
-                    //   height: 10.0,
-                    // ),
-                    // TextField(
-                    //   controller: _passwordController,
-                    //   obscureText: true,
-                    //   style: genericTextStyle,
-                    //   decoration: InputDecoration(
-                    //       labelText: "Password",
-                    //       labelStyle: genericTextStyle,
-                    //       prefixIcon: Icon(
-                    //         Icons.lock,
-                    //         color: Color(0xffe9e9e9),
-                    //         size: 20.0,
-                    //       )),
-                    // ),
-                    // SizedBox(
-                    //   height: 10.0,
-                    // ),
-                    // Row(
-                    //   children: <Widget>[
-                    //     Column(
-                    //       children: <Widget>[
-                    //         RaisedButton(
-                    //           // shape: shapeBorderroundedWith30,
-                    //           color: Color(0xffDAE0E2),
-                    //           child: Text(
-                    //             'Login',
-                    //             style: TextStyle(color: Color(0xff2F363F)),
-                    //           ),
-                    //           onPressed: login,
-                    //         ),
-                    //         FlatButton(
-                    //           child: Text(
-                    //             "Forgot Password?",
-                    //             softWrap: true,
-                    //             style: loginFlatButtonStyle,
-                    //           ),
-                    //           onPressed: () {
-                    //             Alert(
-                    //                 context: context,
-                    //                 title: "Reset Pasword",
-                    //                 content: Column(
-                    //                   children: <Widget>[
-                    //                     TextField(
-                    //                       keyboardType:
-                    //                           TextInputType.emailAddress,
-                    //                       controller: _resetEmailController,
-                    //                       decoration: InputDecoration(
-                    //                         icon: Icon(Icons.account_circle),
-                    //                         labelText: 'Enter your mail',
-                    //                       ),
-                    //                     ),
-                    //                   ],
-                    //                 ),
-                    //                 buttons: [
-                    //                   DialogButton(
-                    //                     onPressed: () {
-                    //                       Navigator.pop(context);
-                    //                       resetPassword(_resetEmailController.text);
-                    //                     },
-                    //                     color: Color(0xffD63031),
-                    //                     child: Text(
-                    //                       "Reset Password",
-                    //                       style: TextStyle(
-                    //                           color: Colors.white,
-                    //                           fontSize: 15),
-                    //                     ),
-                    //                   )
-                    //                 ]).show();
-                    //           },
-                    //         ),
-                    //       ],
-                    //     )
-                    //   ],
-                    //   mainAxisAlignment: MainAxisAlignment.end,
-                    // ),
-                    Row(
+                    Column(
                       children: <Widget>[
-                        FlatButton(
-                          child: Text(
-                            "Don't have an account? Sign Up",
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: true,
-                            style: loginFlatButtonStyle,
+                        Container(
+                          width: 230.0,
+                          height: 230.0,
+                          alignment: Alignment.center,
+                          decoration: new BoxDecoration(
+                            image: DecorationImage(
+                              image: new ExactAssetImage('assets/logo.png'),
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          onPressed: () {},
-                        )
+                        ),
+                     
+                        LoginForm(),
+                        Row(
+                          children: <Widget>[
+                            FlatButton(
+                              child: Text(
+                                "Don't have an account? Sign Up",
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: true,
+                                style: loginFlatButtonStyle,
+                              ),
+                              onPressed: () {},
+                            )
+                          ],
+                          mainAxisAlignment: MainAxisAlignment.center,
+                        ),
+
+                        Text(
+                          "OR",
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
+                          style: loginFlatButtonStyle,
+                        ),
+                        SizedBox(
+                          height: 10.0,
+                        ),
+                        SizedBox(width: 400.0, child: SignInWithGoogle()),
+
+                        // SizedBox(width: 400.0, child: SignInWithFacebook()),
+                        // Text(
+                        //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('latitude') ? currentLocation["latitude"] : null}'),
+                        // Text(
+                        //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('longitude') ? currentLocation["longitude"] : null}')
                       ],
-                      mainAxisAlignment: MainAxisAlignment.center,
                     ),
-
-                    Text(
-                      "OR",
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: true,
-                      style: loginFlatButtonStyle,
-                    ),
-                    SizedBox(
-                      height: 10.0,
-                    ),
-                    SizedBox(width: 400.0, child: SignInWithGoogle()),
-
-                    // SizedBox(width: 400.0, child: SignInWithFacebook()),
-                    // Text(
-                    //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('latitude') ? currentLocation["latitude"] : null}'),
-                    // Text(
-                    //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('longitude') ? currentLocation["longitude"] : null}')
                   ],
                 ),
               ),

@@ -20,17 +20,6 @@ class _SignInWithGoogleState extends State<SignInWithGoogle> {
 
   void signIn() async {
     try {
-      var account = await _googleSignIn.isSignedIn();
-      Toast.show("User has logged in: $account", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      // if (account) {
-      //   GoogleSignInAccount disabled = await _googleSignIn.disconnect();
-      //         Toast.show("User has logged out", context,
-      //     duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      //   return;
-
-      // }
-
       GoogleSignInAccount googleUser = await _googleSignIn.signIn();
       GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       FirebaseUser user = await _fAuth.signInWithGoogle(

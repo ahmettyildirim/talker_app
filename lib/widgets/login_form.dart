@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:talker_app/pages/home.dart';
 import 'package:toast/toast.dart';
@@ -17,6 +18,7 @@ class LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   String _email;
   String _password;
+  SharedPreferences prefs;
   final TextEditingController _resetEmailController =
       new TextEditingController();
    void login() async {
@@ -25,6 +27,10 @@ class LoginFormState extends State<LoginForm> {
       FirebaseUser user = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
               email: _email, password: _password);
+      prefs = await SharedPreferences.getInstance();
+      await prefs.setString("id", user.uid);
+      await prefs.setString("email", _email);
+      await prefs.setString("password", _password);
       Toast.show("Logged in successfully", context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
       Navigator.push(
@@ -39,6 +45,17 @@ class LoginFormState extends State<LoginForm> {
   }
 
   
+  void resetPassword(String mailAddress) async {
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: mailAddress);
+      Toast.show("Reset mail has sent you mail address", context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
+    } catch (e) {
+      Toast.show(e.message, context,
+          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -129,7 +146,7 @@ class LoginFormState extends State<LoginForm> {
                             DialogButton(
                               onPressed: () {
                                 Navigator.pop(context);
-                                // resetPassword(_resetEmailController.text);
+                                resetPassword(_resetEmailController.text);
                               },
                               color: Color(0xffD63031),
                               child: Text(
@@ -168,5 +185,6 @@ class LoginFormState extends State<LoginForm> {
     if (value.isEmpty) {
       return 'Please Enter Your Password';
     }
+    return null;
   }
 }

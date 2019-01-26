@@ -1,10 +1,40 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:talker_app/pages/chat.dart';
+import 'package:talker_app/pages/login.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final FirebaseUser _user;
   HomePage(this._user);
+  _HomePageState createState() => _HomePageState(_user);
+}
+
+class _HomePageState extends State<HomePage> {
+  final FirebaseUser _user;
+  _HomePageState(this._user);
+  Future<void> logOut() async {
+    GoogleSignIn _googleSignIn = new GoogleSignIn(
+      scopes: [
+        'email',
+        'https://www.googleapis.com/auth/contacts.readonly',
+      ],
+    );
+    bool isSignedIn = await _googleSignIn.isSignedIn();
+    if (isSignedIn) {
+      _googleSignIn.signOut();
+    }
+    await FirebaseAuth.instance.signOut();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.clear();
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,7 +46,6 @@ class HomePage extends StatelessWidget {
         child: ListView(
           // padding: EdgeInsets.only(left: 10.0, top: 30.0, right: 10.0),
           children: <Widget>[
-           
             UserAccountsDrawerHeader(
               currentAccountPicture: GestureDetector(
                 onTap: () {
@@ -37,6 +66,11 @@ class HomePage extends StatelessWidget {
             ListTile(
               title: Text("Conversations"),
               trailing: Icon(Icons.chat),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => Chat(user:_user)));
+              },
             ),
             Divider(),
             ListTile(
@@ -51,6 +85,7 @@ class HomePage extends StatelessWidget {
                 title: Text("Logout"),
                 trailing: Icon(Icons.exit_to_app),
                 onTap: () {
+                  logOut();
                   Navigator.pop(context);
                 }),
           ],
