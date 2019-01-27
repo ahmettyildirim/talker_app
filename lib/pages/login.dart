@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:talker_app/pages/signup.dart';
 import 'package:talker_app/widgets/google_signin.dart';
 import 'package:talker_app/widgets/login_form.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,7 +71,9 @@ class _LoginPageState extends State<LoginPage> {
                                 softWrap: true,
                                 style: loginFlatButtonStyle,
                               ),
-                              onPressed: () {},
+                              onPressed: (){
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpPage(onSignedIn: widget.onSignedIn)));
+                              }
                             )
                           ],
                           mainAxisAlignment: MainAxisAlignment.center,

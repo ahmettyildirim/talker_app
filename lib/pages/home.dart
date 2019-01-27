@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:talker_app/common/constants.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
 
@@ -15,6 +16,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   UserModel _user;
   Future<void> logOut() async {
     GoogleSignIn _googleSignIn = new GoogleSignIn(
@@ -30,17 +32,22 @@ class _HomePageState extends State<HomePage> {
     await FirebaseAuth.instance.signOut();
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.clear();
+    UserModelRepository.currentUser=null;
     widget.onSignedOut();
   }
-  
-  
+
   @override
   Widget build(BuildContext context) {
     _user = UserModelRepository.currentUser;
     return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: themeColor,
       appBar: AppBar(
         title: Text(""),
-        elevation: defaultTargetPlatform == TargetPlatform.android ? 5.0 : 0.0,
+        elevation: defaultTargetPlatform == TargetPlatform.android ? 1.0 : 0.0,
+        leading: new IconButton(
+            icon: new Icon(Icons.account_circle),
+            onPressed: () => _scaffoldKey.currentState.openDrawer()),
       ),
       drawer: Drawer(
         child: ListView(
@@ -52,7 +59,7 @@ class _HomePageState extends State<HomePage> {
                   print("onTap called.");
                 },
                 child: CircleAvatar(
-                  backgroundImage: NetworkImage(_user.photoUrl),
+                  backgroundImage: NetworkImage(_user.photoUrl == null ? '' : _user.photoUrl),
                   backgroundColor: Colors.grey,
                 ),
               ),
@@ -69,9 +76,7 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => Chat()));
+                    context, MaterialPageRoute(builder: (context) => Chat()));
               },
             ),
             Divider(),

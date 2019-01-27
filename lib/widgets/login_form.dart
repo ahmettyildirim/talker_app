@@ -72,7 +72,7 @@ class LoginFormState extends State<LoginForm> {
                 labelStyle: genericTextStyle,
                 prefixIcon: Icon(
                   Icons.email,
-                  color: Color(0xf9f9f9f9),
+                  color: inputIconColor,
                   size: 20.0,
                 ),
               )),
@@ -91,7 +91,7 @@ class LoginFormState extends State<LoginForm> {
                 labelStyle: genericTextStyle,
                 prefixIcon: Icon(
                   Icons.lock,
-                  color: Color(0xf9f9f9f9),
+                  color: inputIconColor,
                   size: 20.0,
                 ),
               )),

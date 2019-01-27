@@ -9,5 +9,6 @@ abstract class BaseAuth{
   Future<UserModel> signInWithProvider(Providers provider);
   Future<UserModel> currentUser();
   Future<void> signOut();
+  Future<UserModel> createNewUser({String email,  String password,String displayName});
 
 }

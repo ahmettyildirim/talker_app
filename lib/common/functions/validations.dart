@@ -5,7 +5,12 @@ class Validations {
     }
     return null;
   }
-
+ static String validatePassRepeat(String value1,value2) {
+    if (value1 != value2) {
+      return 'Passwords are not matching';
+    }
+    return null;
+  }
   static String validateEmail(String value) {
     if (value.isEmpty) {
       return 'Please Enter Your Email';

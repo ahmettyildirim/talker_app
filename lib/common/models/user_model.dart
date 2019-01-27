@@ -1,6 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:talker_app/common/functions/auth_provider.dart';
 
 class UserModel {
   String _uid;
@@ -27,10 +25,6 @@ class UserModel {
     }
   }
   String get uid => this._uid;
-  static Future<UserModel> getCurrentUser(BuildContext context) async{
-    var user = await AuthProvider.of(context).auth.currentUser();
-    return user;
-  }
 }
 class UserModelRepository{
   static UserModel currentUser;

@@ -17,7 +17,6 @@ enum AuthStatus {
 }
 
 class _RootPageState extends State<RootPage> {
-  UserModel _user;
   AuthStatus authStatus = AuthStatus.notDetermined;
 
   @override
@@ -27,7 +26,6 @@ class _RootPageState extends State<RootPage> {
     auth.currentUser().then((user) {
       setState(() {
         UserModelRepository.currentUser = user;
-        _user = user;
         authStatus =
             user == null ? AuthStatus.notSignedIn : AuthStatus.signedIn;
       });

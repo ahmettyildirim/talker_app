@@ -12,7 +12,8 @@ class FirebaseAuthentication extends BaseAuth {
     try {
       FirebaseUser user = await _firebaseAuth.signInWithEmailAndPassword(
           email: email, password: password);
-      return UserModel.withFirebaseUser(user);
+      UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
+      return UserModelRepository.currentUser;
     } catch (e) {
       return null;
     }
@@ -36,13 +37,34 @@ class FirebaseAuthentication extends BaseAuth {
             accessToken: googleAuth.accessToken,
             idToken: googleAuth.idToken,
           );
-          return UserModel.withFirebaseUser(user);
+          UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
+          return UserModelRepository.currentUser;
         } catch (e) {
           return null;
         }
         break;
     }
     return null;
+  }
+
+  @override
+  Future<UserModel> createNewUser(
+      {@required String email,
+      @required String password,
+      String displayName}) async {
+    try {
+      FirebaseUser user = await _firebaseAuth.createUserWithEmailAndPassword(
+          email: email, password: password);
+      if (user != null) {
+        UserUpdateInfo updateInfo = UserUpdateInfo();
+        updateInfo.displayName = displayName;
+        await user.updateProfile(updateInfo);
+      }
+      UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
+      return UserModelRepository.currentUser;
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
