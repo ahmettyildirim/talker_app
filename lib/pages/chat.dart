@@ -1,13 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:talker_app/common/models/user_model.dart';
 import 'package:toast/toast.dart';
 
 class Chat extends StatelessWidget {
-  final FirebaseUser user;
 
-  Chat({Key key, @required this.user}) : super(key: key);
+  Chat({Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -19,31 +18,29 @@ class Chat extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ChatScreen(user: user),
+      body: ChatScreen(),
     );
   }
 }
 
 class ChatScreen extends StatefulWidget {
-  final FirebaseUser user;
-
   ChatScreen({
     Key key,
-    @required this.user,
+   
   }) : super(key: key);
 
   @override
-  State createState() => new ChatScreenState(user: user);
+  State createState() => new ChatScreenState();
 }
 
 class ChatScreenState extends State<ChatScreen> {
-  ChatScreenState({Key key, @required this.user});
+  ChatScreenState({Key key});
 
+  UserModel user = UserModelRepository.currentUser;
   final TextEditingController textEditingController =
       new TextEditingController();
   final ScrollController listScrollController = new ScrollController();
   final FocusNode focusNode = new FocusNode();
-  FirebaseUser user;
 
   bool isLoading = false;
   bool isShowSticker = false;
@@ -115,11 +112,11 @@ class ChatScreenState extends State<ChatScreen> {
       children: <Widget>[
         Container(
           child: Column(children: <Widget>[
-             SizedBox(
+            SizedBox(
               width: double.infinity,
               child: Container(
                 child: Text(
-                  document.data["sender"],
+                 document.data["sender"] ?? '',
                   textAlign: TextAlign.left,
                   style: TextStyle(
                       color: Colors.indigo,

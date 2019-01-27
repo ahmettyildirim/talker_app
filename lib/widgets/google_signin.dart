@@ -1,43 +1,25 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:talker_app/pages/home.dart';
+import 'package:talker_app/common/models/user_model.dart';
+import 'package:talker_app/common/functions/auth_provider.dart';
+import 'package:talker_app/common/functions/base_auth.dart';
 import 'package:toast/toast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class SignInWithGoogle extends StatefulWidget {
+  final VoidCallback onSignedIn;
+  SignInWithGoogle({this.onSignedIn});
   _SignInWithGoogleState createState() => _SignInWithGoogleState();
 }
 
 class _SignInWithGoogleState extends State<SignInWithGoogle> {
-  static final GoogleSignIn _googleSignIn = new GoogleSignIn(
-    scopes: [
-      'email',
-      'https://www.googleapis.com/auth/contacts.readonly',
-    ],
-  );
-  final FirebaseAuth _fAuth = FirebaseAuth.instance;
 
   void signIn() async {
     try {
-      GoogleSignInAccount googleUser = await _googleSignIn.signIn();
-      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      FirebaseUser user = await _fAuth.signInWithGoogle(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      Toast.show("Logged in successfully", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      Navigator.push(
-          context,
-          // MaterialPageRoute(
-          //     builder: (context) => Chat(
-          //           user: user,
-          //         )));
-          MaterialPageRoute(
-              builder: (context) => HomePage(user
-                  )));
-                  
+      var auth = AuthProvider.of(context).auth;
+      UserModel user = await auth.signInWithProvider(Providers.Google);
+      if(user!=null){
+          widget.onSignedIn();
+      }
     } catch (e) {
       Toast.show(e.message, context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);

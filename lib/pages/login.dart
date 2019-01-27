@@ -1,141 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:talker_app/pages/chat.dart';
-import 'package:talker_app/pages/home.dart';
 import 'package:talker_app/widgets/google_signin.dart';
 import 'package:talker_app/widgets/login_form.dart';
-import 'package:toast/toast.dart';
-import 'package:location/location.dart';
-import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
+  final VoidCallback onSignedIn;
+  LoginPage({this.onSignedIn});
+  @override
   _LoginPageState createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = new TextEditingController();
-  final TextEditingController _passwordController = new TextEditingController();
-  var currentLocation = <String, double>{};
-  var location = new Location();
   bool isLoggedIn = false;
   SharedPreferences prefs;
   FirebaseAuth auth;
-  StreamSubscription<Map<String, double>> locationSubscription;
-
-  void initPlatformState() async {
-    Map<String, double> myLocation;
-    try {
-      myLocation = await location.getLocation();
-    } on PlatformException catch (e) {
-      if (e.code == 'PERMISSION_DENİED') {
-        Toast.show("Please allow permission for locations", context,
-            duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-        myLocation = null;
-      }
-    }
-    currentLocation = myLocation;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    currentLocation['latitude'] = 0.0;
-    currentLocation['longitude'] = 0.0;
-    initPlatformState();
-    locationSubscription =
-        location.onLocationChanged().listen((Map<String, double> result) {
-      setState(() {
-        currentLocation = result;
-      });
-    });
-
-    isSignedIn();
-  }
-
-  void isSignedIn() async {
-    try {
-      GoogleSignIn _googleSignIn = new GoogleSignIn(
-        scopes: [
-          'email',
-          'https://www.googleapis.com/auth/contacts.readonly',
-        ],
-      );
-      FirebaseUser user;
-      prefs = await SharedPreferences.getInstance();
-      bool isSignedIn = await _googleSignIn.isSignedIn();
-
-      if (isSignedIn) {
-        GoogleSignInAccount googleUser = await _googleSignIn.signIn();
-        GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        await FirebaseAuth.instance.reauthenticateWithGoogleCredential(
-            accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
-      } else {
-        var id = prefs.getString('id') ?? '';
-        if (id.isNotEmpty) {
-          await FirebaseAuth.instance.reauthenticateWithEmailAndPassword(
-              email: prefs.getString("email"),
-              password: prefs.getString("password"));
-        }
-      }
-      user = await FirebaseAuth.instance.currentUser();
-      if (user != null)
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage(user)),
-        );
-    } catch (e) {}
-  }
-
-
-  void signup() async {
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
-    try {
-      FirebaseUser user = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-              email: _emailController.text, password: _passwordController.text);
-      Toast.show("Created  successfully ${user.email}", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
-    } catch (e) {
-      Toast.show(e.message, context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.BOTTOM);
-    }
-  }
-
-  _showDialog() async {
-    await showDialog<String>(
-      context: context,
-      child: new AlertDialog(
-        contentPadding: const EdgeInsets.all(16.0),
-        content: new Row(
-          children: <Widget>[
-            new Expanded(
-              child: new TextField(
-                autofocus: true,
-                decoration: new InputDecoration(
-                    labelText: 'Full Name', hintText: 'eg. John Smith'),
-              ),
-            )
-          ],
-        ),
-        actions: <Widget>[
-          new FlatButton(
-              child: const Text('CANCEL'),
-              onPressed: () {
-                Navigator.pop(context);
-              }),
-          new FlatButton(
-              child: const Text('OPEN'),
-              onPressed: () {
-                Navigator.pop(context);
-              })
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,8 +27,6 @@ class _LoginPageState extends State<LoginPage> {
           fit: BoxFit.cover,
         ),
       ),
-      // padding: EdgeInsets.all(10.0),
-
       child: Container(
           decoration: new BoxDecoration(
               gradient: new LinearGradient(
@@ -179,8 +57,9 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-                     
-                        LoginForm(),
+                        LoginForm(
+                          onSignedIn: widget.onSignedIn,
+                        ),
                         Row(
                           children: <Widget>[
                             FlatButton(
@@ -196,7 +75,6 @@ class _LoginPageState extends State<LoginPage> {
                           ],
                           mainAxisAlignment: MainAxisAlignment.center,
                         ),
-
                         Text(
                           "OR",
                           textAlign: TextAlign.center,
@@ -207,13 +85,11 @@ class _LoginPageState extends State<LoginPage> {
                         SizedBox(
                           height: 10.0,
                         ),
-                        SizedBox(width: 400.0, child: SignInWithGoogle()),
-
-                        // SizedBox(width: 400.0, child: SignInWithFacebook()),
-                        // Text(
-                        //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('latitude') ? currentLocation["latitude"] : null}'),
-                        // Text(
-                        //     'LOCATIOOON : Lat/Lng:${currentLocation != null && currentLocation.containsKey('longitude') ? currentLocation["longitude"] : null}')
+                        SizedBox(
+                            width: 400.0,
+                            child: SignInWithGoogle(
+                              onSignedIn: widget.onSignedIn,
+                            )),
                       ],
                     ),
                   ],

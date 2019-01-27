@@ -3,18 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
-import 'package:talker_app/pages/login.dart';
 
 class HomePage extends StatefulWidget {
-  final FirebaseUser _user;
-  HomePage(this._user);
-  _HomePageState createState() => _HomePageState(_user);
+  final VoidCallback onSignedOut;
+  // final UserModel _user;
+
+  HomePage({this.onSignedOut});
+  _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final FirebaseUser _user;
-  _HomePageState(this._user);
+  UserModel _user;
   Future<void> logOut() async {
     GoogleSignIn _googleSignIn = new GoogleSignIn(
       scopes: [
@@ -29,14 +30,13 @@ class _HomePageState extends State<HomePage> {
     await FirebaseAuth.instance.signOut();
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.clear();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
-    );
+    widget.onSignedOut();
   }
-
+  
+  
   @override
   Widget build(BuildContext context) {
+    _user = UserModelRepository.currentUser;
     return Scaffold(
       appBar: AppBar(
         title: Text(""),
@@ -56,8 +56,8 @@ class _HomePageState extends State<HomePage> {
                   backgroundColor: Colors.grey,
                 ),
               ),
-              accountName: Text(_user.displayName),
-              accountEmail: Text(_user.email),
+              accountName: Text(_user.displayName ?? ""),
+              accountEmail: Text(_user.email ?? ""),
             ),
             ListTile(
               title: Text("Search Rooms"),
@@ -68,8 +68,10 @@ class _HomePageState extends State<HomePage> {
               trailing: Icon(Icons.chat),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Chat(user:_user)));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => Chat()));
               },
             ),
             Divider(),

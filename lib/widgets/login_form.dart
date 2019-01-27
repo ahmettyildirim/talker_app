@@ -4,10 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_app/common/constants.dart';
-import 'package:talker_app/pages/home.dart';
+import 'package:talker_app/common/functions/auth_provider.dart';
+import 'package:talker_app/common/functions/validations.dart';
+import 'package:talker_app/common/models/user_model.dart';
 import 'package:toast/toast.dart';
 
 class LoginForm extends StatefulWidget {
+  final VoidCallback onSignedIn;
+  LoginForm({this.onSignedIn});
   @override
   LoginFormState createState() {
     return LoginFormState();
@@ -21,30 +25,21 @@ class LoginFormState extends State<LoginForm> {
   SharedPreferences prefs;
   final TextEditingController _resetEmailController =
       new TextEditingController();
-   void login() async {
+  void login() async {
+    var auth = AuthProvider.of(context).auth;
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
-      FirebaseUser user = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-              email: _email, password: _password);
-      prefs = await SharedPreferences.getInstance();
-      await prefs.setString("id", user.uid);
-      await prefs.setString("email", _email);
-      await prefs.setString("password", _password);
-      Toast.show("Logged in successfully", context,
-          duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => HomePage(user,
-                  )));
+      UserModel user = await auth.signInWithEmailAndPassword(
+          email: _email, password: _password);
+      if(user != null){
+        widget.onSignedIn();
+      }
     } catch (e) {
       Toast.show(e.message, context,
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
     }
   }
 
-  
   void resetPassword(String mailAddress) async {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
@@ -56,7 +51,9 @@ class LoginFormState extends State<LoginForm> {
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
     }
   }
+
   @override
+  
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
@@ -64,7 +61,7 @@ class LoginFormState extends State<LoginForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           TextFormField(
-              validator: _validateEmail,
+              validator: Validations.validateEmail,
               keyboardType: TextInputType.emailAddress,
               style: genericTextStyle,
               onSaved: (String val) {
@@ -83,7 +80,7 @@ class LoginFormState extends State<LoginForm> {
             height: 10.0,
           ),
           TextFormField(
-              validator: _validatePass,
+              validator: Validations.validatePass,
               obscureText: true,
               style: genericTextStyle,
               onSaved: (String val) {
@@ -117,7 +114,7 @@ class LoginFormState extends State<LoginForm> {
                         _formKey.currentState.save();
                         // If the form is valid, we want to show a Snackbar
                         login();
-                        }
+                      }
                     },
                   ),
                   FlatButton(
@@ -168,23 +165,4 @@ class LoginFormState extends State<LoginForm> {
     );
   }
 
-  String _validateEmail(String value) {
-    if (value.isEmpty) {
-      return 'Please Enter Your Email';
-    }
-    Pattern pattern =
-        r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
-    RegExp regex = new RegExp(pattern);
-    if (!regex.hasMatch(value))
-      return 'Please Enter Valid Email';
-    else
-      return null;
-  }
-
-  String _validatePass(String value) {
-    if (value.isEmpty) {
-      return 'Please Enter Your Password';
-    }
-    return null;
-  }
 }
