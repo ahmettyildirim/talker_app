@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -12,8 +13,8 @@ class FirebaseAuthentication extends BaseAuth {
     try {
       FirebaseUser user = await _firebaseAuth.signInWithEmailAndPassword(
           email: email, password: password);
-      UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
-      return UserModelRepository.currentUser;
+      await UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
+      return UserModelRepository.instance.currentUser;
     } catch (e) {
       return null;
     }
@@ -37,8 +38,9 @@ class FirebaseAuthentication extends BaseAuth {
             accessToken: googleAuth.accessToken,
             idToken: googleAuth.idToken,
           );
-          UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
-          return UserModelRepository.currentUser;
+          await UserModelRepository.instance
+              .setCurrentUserWithFirebaseUser(user);
+          return UserModelRepository.instance.currentUser;
         } catch (e) {
           return null;
         }
@@ -55,14 +57,32 @@ class FirebaseAuthentication extends BaseAuth {
     try {
       FirebaseUser user = await _firebaseAuth.createUserWithEmailAndPassword(
           email: email, password: password);
-      if (user != null) {
+      if (user == null) {
+        return null;
+      }
+      if (displayName != null) {
         UserUpdateInfo updateInfo = UserUpdateInfo();
         updateInfo.displayName = displayName;
-        await user.updateProfile(updateInfo);
+        // await user.updateProfile(updateInfo);
+        
+        var documentReference = Firestore.instance
+            .collection('users')
+            .document(user.uid);
+
+        Firestore.instance.runTransaction((transaction) async {
+          await transaction.set(
+            documentReference,
+            {
+              'uid': user.uid,
+              'displayName': displayName,
+            },
+          );
+        });
       }
-      UserModelRepository.currentUser = UserModel.withFirebaseUser(user);
-      return UserModelRepository.currentUser;
+      await UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
+      return UserModelRepository.instance.currentUser;
     } catch (e) {
+      print(e);
       return null;
     }
   }
@@ -70,8 +90,8 @@ class FirebaseAuthentication extends BaseAuth {
   @override
   Future<UserModel> currentUser() async {
     FirebaseUser user = await _firebaseAuth.currentUser();
-
-    return user == null ? null : UserModel.withFirebaseUser(user);
+    UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
+    return UserModelRepository.instance.currentUser;
   }
 
   @override

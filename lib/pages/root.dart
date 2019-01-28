@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:talker_app/common/functions/auth_firebase.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/common/functions/auth_provider.dart';
 import 'package:talker_app/pages/home.dart';
@@ -20,12 +21,11 @@ class _RootPageState extends State<RootPage> {
   AuthStatus authStatus = AuthStatus.notDetermined;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    var auth = AuthProvider.of(context).auth;
+  void initState() {
+    super.initState();
+    var auth = FirebaseAuthentication();
     auth.currentUser().then((user) {
       setState(() {
-        UserModelRepository.currentUser = user;
         authStatus =
             user == null ? AuthStatus.notSignedIn : AuthStatus.signedIn;
       });
@@ -50,6 +50,7 @@ class _RootPageState extends State<RootPage> {
 
   @override
   Widget build(BuildContext context) {
+    var user = UserModelRepository.instance.currentUser;
     switch (authStatus) {
       case AuthStatus.notDetermined:
         return _buildWaitingScreen();

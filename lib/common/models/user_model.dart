@@ -11,29 +11,39 @@ class UserModel {
   FirebaseUser _fireBaseUser;
   UserModel(this._uid,
       {this.email,
-      this.displayName,
-      this.phoneNumber,
-      this.providerId,
-      this.photoUrl});
-  UserModel.withFirebaseUser(this._fireBaseUser) {
-    if (FirebaseUser != null) {
-      this._uid = _fireBaseUser.uid;
-      this.displayName = _fireBaseUser.displayName;
-      this.email = _fireBaseUser.email;
-    }
-  }
+      this.displayName = "",
+      this.phoneNumber = "",
+      this.providerId = "",
+      this.photoUrl = ""});
+
   String get uid => this._uid;
-    Future<String> getPhotoUrl(String id) async{
-    DocumentSnapshot res = await Firestore.instance
-            .collection('users')
-            .document(id)
-            .get();
-      return res["photoUrl"]; 
-      
-  }  
 }
 
+class UserModelRepository {
+  static final UserModelRepository instance = UserModelRepository();
+  static UserModel _currentUser;
+  Future<DocumentSnapshot> _getUserDetails(String id) async {
+    DocumentSnapshot res =
+        await Firestore.instance.collection('users').document(id).get();
+    return res;
+  }
 
-class UserModelRepository{
-  static UserModel currentUser;
+  UserModel get currentUser => _currentUser;
+  Future<void> setCurrentUserWithFirebaseUser(FirebaseUser user) async {
+    _currentUser = UserModel(user.uid, email: user.email);
+    DocumentSnapshot values = await _getUserDetails(user.uid);
+     _currentUser.displayName=user.displayName;
+     _currentUser.phoneNumber=user.phoneNumber;
+     _currentUser.photoUrl=user.photoUrl;
+    if (values.data != null) {
+      _currentUser.displayName =
+          values["displayName"] ?? _currentUser.displayName;
+      _currentUser.phoneNumber =
+          values["phoneNumber"] ?? _currentUser.phoneNumber;
+      _currentUser.photoUrl = values["photoUrl"] ?? _currentUser.photoUrl;
+    }
+  }
+  void clearCurrentUser(){
+   _currentUser = null; 
+  }
 }

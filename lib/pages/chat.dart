@@ -36,7 +36,7 @@ class ChatScreen extends StatefulWidget {
 class ChatScreenState extends State<ChatScreen> {
   ChatScreenState({Key key});
 
-  UserModel user = UserModelRepository.currentUser;
+  UserModel user = UserModelRepository.instance.currentUser;
   final TextEditingController textEditingController =
       new TextEditingController();
   final ScrollController listScrollController = new ScrollController();

@@ -27,8 +27,8 @@ class _SignUpPageState extends State<SignUpPage>
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     try {
       UserModel user = await auth.createNewUser(
-          email: _email, password: _password,displayName: _displayName);
-      if(user != null){
+          email: _email, password: _password, displayName: _displayName);
+      if (user != null) {
         widget.onSignedIn();
         Navigator.pop(context);
       }
@@ -37,6 +37,7 @@ class _SignUpPageState extends State<SignUpPage>
           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
     }
   }
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +52,7 @@ class _SignUpPageState extends State<SignUpPage>
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -71,128 +72,133 @@ class _SignUpPageState extends State<SignUpPage>
             begin: const FractionalOffset(0.0, 0.0),
             end: const FractionalOffset(0.0, 1.0),
           )),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      "Registration Form",
-                      style: TextStyle(
-                          color: greyColor,
-                          fontFamily: 'Roboto',
-                          fontSize: 22.0,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 10.0,
-                ),
-                TextFormField(
-                    validator: Validations.validateEmail,
-                    keyboardType: TextInputType.emailAddress,
-                    style: genericTextStyle,
-                    onSaved: (String val) {
-                      _email = val;
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Email",
-                      labelStyle: genericTextStyle,
-                      prefixIcon: Icon(
-                        Icons.email,
-                        color: Color(0xf9f9f9f9),
-                        size: 20.0,
+          child: Center(
+            child: SingleChildScrollView(
+              child: Container(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            "Registration Form",
+                            style: TextStyle(
+                                color: greyColor,
+                                fontFamily: 'Roboto',
+                                fontSize: 22.0,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
-                    )),
-                SizedBox(
-                  height: 10.0,
-                ),
-                TextFormField(
-                    validator: Validations.validatePass,
-                    obscureText: true,
-                    style: genericTextStyle,
-                    onSaved: (String val) {
-                      _password = val;
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Password",
-                      labelStyle: genericTextStyle,
-                      prefixIcon: Icon(
-                        Icons.lock,
-                        color: inputIconColor,
-                        size: 20.0,
+                      SizedBox(
+                        height: 10.0,
                       ),
-                    )),
-                SizedBox(
-                  height: 10.0,
-                ),
-                TextFormField(
-                    validator: Validations.validatePass,
-                    obscureText: true,
-                    style: genericTextStyle,
-                    onSaved: (String val) {
-                      _password = val;
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Password Repeat",
-                      labelStyle: genericTextStyle,
-                      prefixIcon: Icon(
-                        Icons.lock,
-                        color: inputIconColor,
-                        size: 20.0,
+                      TextFormField(
+                          validator: Validations.validateEmail,
+                          keyboardType: TextInputType.emailAddress,
+                          style: genericTextStyle,
+                          onSaved: (String val) {
+                            _email = val;
+                          },
+                          decoration: InputDecoration(
+                            labelText: "Email",
+                            labelStyle: genericTextStyle,
+                            prefixIcon: Icon(
+                              Icons.email,
+                              color: Color(0xf9f9f9f9),
+                              size: 20.0,
+                            ),
+                          )),
+                      SizedBox(
+                        height: 10.0,
                       ),
-                    )),
-                SizedBox(
-                  height: 10.0,
-                ),
-                TextFormField(
-                    validator: Validations.validatePass,
-                    style: genericTextStyle,
-                    onSaved: (String val) {
-                      _displayName = val;
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Display Name",
-                      labelStyle: genericTextStyle,
-                      prefixIcon: Icon(
-                        Icons.account_box,
-                        color: inputIconColor,
-                        size: 20.0,
+                      TextFormField(
+                          validator: Validations.validatePass,
+                          obscureText: true,
+                          style: genericTextStyle,
+                          onSaved: (String val) {
+                            _password = val;
+                          },
+                          decoration: InputDecoration(
+                            labelText: "Password",
+                            labelStyle: genericTextStyle,
+                            prefixIcon: Icon(
+                              Icons.lock,
+                              color: inputIconColor,
+                              size: 20.0,
+                            ),
+                          )),
+                      SizedBox(
+                        height: 10.0,
                       ),
-                    )),
-                SizedBox(
-                  height: 10.0,
-                ),
-               
-                 Row(
-            children: <Widget>[
-              Column(
-                children: <Widget>[
-                  RaisedButton(
-                    // shape: shapeBorderroundedWith30,
-                    color: Color(0xff),
-                    child: Text(
-                      'Signup',
-                      style: TextStyle(color: Color(0xfff9f9f9)),
-                    ),
-                    onPressed: () {
-                      if (_formKey.currentState.validate()) {
-                        _formKey.currentState.save();
-                        // If the form is valid, we want to show a Snackbar
-                        signUp();
-                      }
-                    },
+                      TextFormField(
+                          validator: Validations.validatePass,
+                          obscureText: true,
+                          style: genericTextStyle,
+                          onSaved: (String val) {
+                            _password = val;
+                          },
+                          decoration: InputDecoration(
+                            labelText: "Password Repeat",
+                            labelStyle: genericTextStyle,
+                            prefixIcon: Icon(
+                              Icons.lock,
+                              color: inputIconColor,
+                              size: 20.0,
+                            ),
+                          )),
+                      SizedBox(
+                        height: 10.0,
+                      ),
+                      TextFormField(
+                          validator: Validations.validatePass,
+                          style: genericTextStyle,
+                          onSaved: (String val) {
+                            _displayName = val;
+                          },
+                          decoration: InputDecoration(
+                            labelText: "Display Name",
+                            labelStyle: genericTextStyle,
+                            prefixIcon: Icon(
+                              Icons.account_box,
+                              color: inputIconColor,
+                              size: 20.0,
+                            ),
+                          )),
+                      SizedBox(
+                        height: 10.0,
+                      ),
+                      Row(
+                        children: <Widget>[
+                          Column(
+                            children: <Widget>[
+                              RaisedButton(
+                                // shape: shapeBorderroundedWith30,
+                                color: Color(0xff),
+                                child: Text(
+                                  'Signup',
+                                  style: TextStyle(color: Color(0xfff9f9f9)),
+                                ),
+                                onPressed: () {
+                                  if (_formKey.currentState.validate()) {
+                                    _formKey.currentState.save();
+                                    // If the form is valid, we want to show a Snackbar
+                                    signUp();
+                                  }
+                                },
+                              ),
+                            ],
+                          )
+                        ],
+                        mainAxisAlignment: MainAxisAlignment.end,
+                      ),
+                    ],
                   ),
-                ],
-              )
-            ],
-            mainAxisAlignment: MainAxisAlignment.end,
-          ),
-              ],
+                ),
+              ),
             ),
           ),
         ),

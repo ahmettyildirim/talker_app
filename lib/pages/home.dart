@@ -31,13 +31,13 @@ class _HomePageState extends State<HomePage> {
         'https://www.googleapis.com/auth/contacts.readonly',
       ],
     );
+    await FirebaseAuth.instance.signOut();
     bool isSignedIn = await _googleSignIn.isSignedIn();
     if (isSignedIn) {
-      _googleSignIn.signOut();
+      await _googleSignIn.disconnect();
+      await _googleSignIn.signOut();
     }
-    await FirebaseAuth.instance.signOut();
-
-    UserModelRepository.currentUser = null;
+    UserModelRepository.instance.clearCurrentUser();
     widget.onSignedOut();
   }
 
@@ -53,27 +53,34 @@ class _HomePageState extends State<HomePage> {
 
   Future<String> _pickSaveImage() async {
     File imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
-    StorageReference ref = FirebaseStorage.instance.ref().child("image.jpg");
+    StorageReference ref = FirebaseStorage.instance
+        .ref()
+        .child("${UserModelRepository.instance.currentUser.uid}_avatar.jpg ");
     StorageUploadTask uploadTask = ref.putFile(imageFile);
     var url = await (await uploadTask.onComplete).ref.getDownloadURL();
     print(url);
 
     var documentReference = Firestore.instance
         .collection('users')
-        .document(UserModelRepository.currentUser.uid);
-
-    Firestore.instance.runTransaction((transaction) async {
-      await transaction.set(
-        documentReference,
-        {
-          'uid': UserModelRepository.currentUser.uid,
-          'photoUrl': url,
-        },
-      );
-    });
+        .document(UserModelRepository.instance.currentUser.uid);
+    var doc = await documentReference.get();
+    if(doc.data ==null){
+      await documentReference.setData({'photoUrl': url,});
+    }else{
+      await documentReference.updateData({'photoUrl': url,});
+    }
+    // Firestore.instance.runTransaction((transaction) async {
+    //   await transaction.set(
+    //     documentReference,
+    //     {
+    //       'uid': UserModelRepository.instance.currentUser.uid,
+    //       'photoUrl': url,
+    //     },
+    //   );
+    // });
 
     setState(() {
-      UserModelRepository.currentUser.photoUrl = url;
+      UserModelRepository.instance.currentUser.photoUrl = url;
     });
 
     return url;
@@ -81,7 +88,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    _user = UserModelRepository.currentUser;
+    _user = UserModelRepository.instance.currentUser;
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -105,11 +112,15 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   _pickSaveImage();
                 },
-                child: CircleAvatar(
-                  backgroundImage: NetworkImage(
-                      _user.photoUrl == null ? '' : _user.photoUrl),
-                  backgroundColor: Colors.grey,
-                ),
+                child: _user.photoUrl == null || _user.photoUrl == ""
+                    ? CircleAvatar(
+                        backgroundColor: Colors.grey,
+                      )
+                    : CircleAvatar(
+                        backgroundImage: NetworkImage(
+                            _user.photoUrl == null ? '' : _user.photoUrl),
+                        backgroundColor: Colors.grey,
+                      ),
               ),
               accountName: Text(_user.displayName ?? ""),
               accountEmail: Text(_user.email ?? ""),
