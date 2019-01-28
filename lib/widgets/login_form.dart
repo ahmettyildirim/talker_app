@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:talker_app/common/functions/auth_provider.dart';
 import 'package:talker_app/common/functions/validations.dart';
@@ -22,7 +21,6 @@ class LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   String _email;
   String _password;
-  SharedPreferences prefs;
   final TextEditingController _resetEmailController =
       new TextEditingController();
   void login() async {

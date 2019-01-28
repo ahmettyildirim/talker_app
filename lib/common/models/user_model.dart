@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class UserModel {
@@ -19,13 +20,20 @@ class UserModel {
       this._uid = _fireBaseUser.uid;
       this.displayName = _fireBaseUser.displayName;
       this.email = _fireBaseUser.email;
-      this.phoneNumber = _fireBaseUser.phoneNumber;
-      this.photoUrl = _fireBaseUser.photoUrl;
-      this.providerId = _fireBaseUser.providerId;
     }
   }
   String get uid => this._uid;
+    Future<String> getPhotoUrl(String id) async{
+    DocumentSnapshot res = await Firestore.instance
+            .collection('users')
+            .document(id)
+            .get();
+      return res["photoUrl"]; 
+      
+  }  
 }
+
+
 class UserModelRepository{
   static UserModel currentUser;
 }

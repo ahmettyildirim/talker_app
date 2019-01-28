@@ -17,6 +17,8 @@ class _SignInWithGoogleState extends State<SignInWithGoogle> {
     try {
       var auth = AuthProvider.of(context).auth;
       UserModel user = await auth.signInWithProvider(Providers.Google);
+      user.photoUrl= await user.getPhotoUrl(user.uid);
+      
       if(user!=null){
           widget.onSignedIn();
       }

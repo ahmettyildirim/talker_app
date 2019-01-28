@@ -1,11 +1,15 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -18,6 +22,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   UserModel _user;
+  File image;
+
   Future<void> logOut() async {
     GoogleSignIn _googleSignIn = new GoogleSignIn(
       scopes: [
@@ -30,16 +36,57 @@ class _HomePageState extends State<HomePage> {
       _googleSignIn.signOut();
     }
     await FirebaseAuth.instance.signOut();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.clear();
-    UserModelRepository.currentUser=null;
+
+    UserModelRepository.currentUser = null;
     widget.onSignedOut();
+  }
+
+  picker() async {
+    print('Picker is called');
+    File img = await ImagePicker.pickImage(source: ImageSource.gallery);
+    if (img != null) {
+      setState(() {
+        image = img;
+      });
+    }
+  }
+
+  Future<String> _pickSaveImage() async {
+    File imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
+    StorageReference ref = FirebaseStorage.instance.ref().child("image.jpg");
+    StorageUploadTask uploadTask = ref.putFile(imageFile);
+    var url = await (await uploadTask.onComplete).ref.getDownloadURL();
+    print(url);
+
+    var documentReference = Firestore.instance
+        .collection('users')
+        .document(UserModelRepository.currentUser.uid);
+
+    Firestore.instance.runTransaction((transaction) async {
+      await transaction.set(
+        documentReference,
+        {
+          'uid': UserModelRepository.currentUser.uid,
+          'photoUrl': url,
+        },
+      );
+    });
+
+    setState(() {
+      UserModelRepository.currentUser.photoUrl = url;
+    });
+
+    return url;
   }
 
   @override
   Widget build(BuildContext context) {
     _user = UserModelRepository.currentUser;
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: picker,
+      ),
       key: _scaffoldKey,
       backgroundColor: themeColor,
       appBar: AppBar(
@@ -56,10 +103,11 @@ class _HomePageState extends State<HomePage> {
             UserAccountsDrawerHeader(
               currentAccountPicture: GestureDetector(
                 onTap: () {
-                  print("onTap called.");
+                  _pickSaveImage();
                 },
                 child: CircleAvatar(
-                  backgroundImage: NetworkImage(_user.photoUrl == null ? '' : _user.photoUrl),
+                  backgroundImage: NetworkImage(
+                      _user.photoUrl == null ? '' : _user.photoUrl),
                   backgroundColor: Colors.grey,
                 ),
               ),
@@ -100,7 +148,9 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Container(
           child: Center(
-        child: Text("Home Page"),
+        child: image == null
+            ? new Text('No Image to Show ')
+            : new Image.file(image),
       )),
     );
   }
