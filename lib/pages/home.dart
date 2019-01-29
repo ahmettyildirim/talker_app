@@ -10,6 +10,8 @@ import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:talker_app/widgets/bottom_navigation.dart';
+import 'package:talker_app/widgets/tab_navigator.dart';
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -20,6 +22,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  TabItem currentTab = TabItem.allRooms;
+  Map<TabItem, GlobalKey<NavigatorState>> navigatorKeys = {
+    TabItem.allRooms: GlobalKey<NavigatorState>(),
+    TabItem.myRooms: GlobalKey<NavigatorState>(),
+    TabItem.friends: GlobalKey<NavigatorState>(),
+  };
+
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   UserModel _user;
   File image;
@@ -39,6 +48,12 @@ class _HomePageState extends State<HomePage> {
     }
     UserModelRepository.instance.clearCurrentUser();
     widget.onSignedOut();
+  }
+
+  void _selectTab(TabItem tabItem) {
+    setState(() {
+      currentTab = tabItem;
+    });
   }
 
   picker() async {
@@ -64,10 +79,14 @@ class _HomePageState extends State<HomePage> {
         .collection('users')
         .document(UserModelRepository.instance.currentUser.uid);
     var doc = await documentReference.get();
-    if(doc.data ==null){
-      await documentReference.setData({'photoUrl': url,});
-    }else{
-      await documentReference.updateData({'photoUrl': url,});
+    if (doc.data == null) {
+      await documentReference.setData({
+        'photoUrl': url,
+      });
+    } else {
+      await documentReference.updateData({
+        'photoUrl': url,
+      });
     }
     // Firestore.instance.runTransaction((transaction) async {
     //   await transaction.set(
@@ -90,10 +109,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     _user = UserModelRepository.instance.currentUser;
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: picker,
-      ),
       key: _scaffoldKey,
       backgroundColor: themeColor,
       appBar: AppBar(
@@ -112,13 +127,10 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   _pickSaveImage();
                 },
-                child: _user.photoUrl == null || _user.photoUrl == ""
-                    ? CircleAvatar(
-                        backgroundColor: Colors.grey,
-                      )
-                    : CircleAvatar(
-                        backgroundImage: NetworkImage(
-                            _user.photoUrl == null ? '' : _user.photoUrl),
+                child:CircleAvatar(
+                        backgroundImage: _user.photoUrl == null || _user.photoUrl == ""
+                            ? ExactAssetImage('assets/user.png')
+                            : NetworkImage( _user.photoUrl),
                         backgroundColor: Colors.grey,
                       ),
               ),
@@ -135,7 +147,7 @@ class _HomePageState extends State<HomePage> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Chat()));
+                    context, MaterialPageRoute(builder: (context) => Chat(roomId:"")));
               },
             ),
             Divider(),
@@ -157,12 +169,25 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      body: Container(
-          child: Center(
-        child: image == null
-            ? new Text('No Image to Show ')
-            : new Image.file(image),
-      )),
+      body: Stack(children: <Widget>[
+        _buildOffstageNavigator(TabItem.allRooms),
+        _buildOffstageNavigator(TabItem.myRooms),
+        _buildOffstageNavigator(TabItem.friends),
+      ]),
+      bottomNavigationBar: BottomNavigation(
+        currentTab: currentTab,
+        onSelectTab: _selectTab,
+      ),
+    );
+  }
+
+  Widget _buildOffstageNavigator(TabItem tabItem) {
+    return Offstage(
+      offstage: currentTab != tabItem,
+      child: TabNavigator(
+        navigatorKey: navigatorKeys[tabItem],
+        tabItem: tabItem,
+      ),
     );
   }
 }

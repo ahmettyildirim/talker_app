@@ -5,8 +5,8 @@ import 'package:talker_app/common/models/user_model.dart';
 import 'package:toast/toast.dart';
 
 class Chat extends StatelessWidget {
-
-  Chat({Key key}) : super(key: key);
+  final String roomId;
+  Chat({Key key,@required this.roomId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,9 @@ class ChatScreen extends StatefulWidget {
 }
 
 class ChatScreenState extends State<ChatScreen> {
-  ChatScreenState({Key key});
+  final String roomId;
+  ChatScreenState({Key key, this.roomId});
+
 
   UserModel user = UserModelRepository.instance.currentUser;
   final TextEditingController textEditingController =
@@ -64,6 +66,7 @@ class ChatScreenState extends State<ChatScreen> {
             'sender': user.displayName,
             'text': content,
             'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+            'roomId':roomId
           },
         );
       });
@@ -265,6 +268,7 @@ class ChatScreenState extends State<ChatScreen> {
         stream: Firestore.instance
             .collection('conversations')
             .orderBy('timestamp', descending: true)
+            .where("roomId", isEqualTo: roomId)
             .limit(20)
             .snapshots(),
         builder: (context, snapshot) {

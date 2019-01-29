@@ -63,21 +63,25 @@ class FirebaseAuthentication extends BaseAuth {
       if (displayName != null) {
         UserUpdateInfo updateInfo = UserUpdateInfo();
         updateInfo.displayName = displayName;
-        // await user.updateProfile(updateInfo);
+        await user.updateProfile(updateInfo);
         
         var documentReference = Firestore.instance
             .collection('users')
             .document(user.uid);
-
-        Firestore.instance.runTransaction((transaction) async {
-          await transaction.set(
-            documentReference,
-            {
+        await documentReference.setData( {
               'uid': user.uid,
               'displayName': displayName,
-            },
-          );
-        });
+              'email':email,
+            });
+        // Firestore.instance.runTransaction((transaction) async {
+        //   await transaction.set(
+        //     documentReference,
+        //     {
+        //       'uid': user.uid,
+        //       'displayName': displayName,
+        //     },
+        //   );
+        // });
       }
       await UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
       return UserModelRepository.instance.currentUser;
