@@ -31,18 +31,24 @@ class TabNavigator extends StatelessWidget {
       TabNavigatorRoutes.root: (context) {
         switch (tabItem) {
           case TabItem.allRooms:
-            return RoomListTab(tabItem: tabItem,  scaffoldKey: GlobalKey<ScaffoldState>());
+            return RoomListTab(
+                tabItem: tabItem, scaffoldKey: GlobalKey<ScaffoldState>());
             break;
           case TabItem.myRooms:
-            return RoomListTab(tabItem: tabItem,  scaffoldKey: GlobalKey<ScaffoldState>(),onlyMyRoom: true,);  
+            return RoomListTab(
+              tabItem: tabItem,
+              scaffoldKey: GlobalKey<ScaffoldState>(),
+              onlyMyRoom: true,
+            );
             break;
           case TabItem.friends:
-            return UserListTab(tabItem: tabItem,  scaffoldKey: GlobalKey<ScaffoldState>());  
+            return UserListTab(
+                tabItem: tabItem, scaffoldKey: GlobalKey<ScaffoldState>());
             break;
           default:
         }
       },
-      TabNavigatorRoutes.detail: (context) => Chat(roomId:"")
+      TabNavigatorRoutes.detail: (context) => Chat(roomId: "")
     };
   }
 

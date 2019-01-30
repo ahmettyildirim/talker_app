@@ -11,7 +11,49 @@ import 'package:talker_app/pages/chat.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:talker_app/widgets/bottom_navigation.dart';
+import 'package:talker_app/widgets/room_list.dart';
 import 'package:talker_app/widgets/tab_navigator.dart';
+import 'package:talker_app/widgets/user_list.dart';
+
+class PlaceholderWidget extends StatelessWidget {
+  final Color color;
+
+  PlaceholderWidget(this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        child: Column(
+          children: <Widget>[
+            TextField(
+              decoration: InputDecoration(
+                labelText: "enter a value",
+              ),
+            ),
+            TextField(
+              decoration: InputDecoration(
+                labelText: "enter a value",
+              ),
+            ),
+            TextField(
+              decoration: InputDecoration(
+                labelText: "enter a value",
+              ),
+            ),
+            RaisedButton(
+                child: Text('click'),
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => Chat(roomId: "",title: "Genel",)));
+                }),
+          ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        color: color);
+  }
+}
 
 class HomePage extends StatefulWidget {
   final VoidCallback onSignedOut;
@@ -22,13 +64,21 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  int _currentIndex = 0;
+  final List<Widget> _children = [
+    RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>()),
+    PlaceholderWidget(Colors.green),
+
+    // RoomListTab(tabItem: TabItem.myRooms,onlyMyRoom: true, scaffoldKey: GlobalKey<ScaffoldState>()),
+    UserListTab(tabItem: TabItem.friends, scaffoldKey:GlobalKey<ScaffoldState>() ,),
+  ];
   TabItem currentTab = TabItem.allRooms;
   Map<TabItem, GlobalKey<NavigatorState>> navigatorKeys = {
     TabItem.allRooms: GlobalKey<NavigatorState>(),
     TabItem.myRooms: GlobalKey<NavigatorState>(),
     TabItem.friends: GlobalKey<NavigatorState>(),
   };
-
+  Widget currentContent;
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   UserModel _user;
   File image;
@@ -106,79 +156,99 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _currentIndex=0;
+    currentContent = RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>());
+  }
+  @override
   Widget build(BuildContext context) {
     _user = UserModelRepository.instance.currentUser;
     return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: themeColor,
-      appBar: AppBar(
-        title: Text(""),
-        elevation: defaultTargetPlatform == TargetPlatform.android ? 1.0 : 0.0,
-        leading: new IconButton(
-            icon: new Icon(Icons.account_circle),
-            onPressed: () => _scaffoldKey.currentState.openDrawer()),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          // padding: EdgeInsets.only(left: 10.0, top: 30.0, right: 10.0),
-          children: <Widget>[
-            UserAccountsDrawerHeader(
-              currentAccountPicture: GestureDetector(
-                onTap: () {
-                  _pickSaveImage();
-                },
-                child:CircleAvatar(
-                        backgroundImage: _user.photoUrl == null || _user.photoUrl == ""
-                            ? ExactAssetImage('assets/user.png')
-                            : NetworkImage( _user.photoUrl),
-                        backgroundColor: Colors.grey,
-                      ),
-              ),
-              accountName: Text(_user.displayName ?? ""),
-              accountEmail: Text(_user.email ?? ""),
-            ),
-            ListTile(
-              title: Text("Search Rooms"),
-              trailing: Icon(Icons.search),
-            ),
-            ListTile(
-              title: Text("Conversations"),
-              trailing: Icon(Icons.chat),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                    context, MaterialPageRoute(builder: (context) => Chat(roomId:"")));
-              },
-            ),
-            Divider(),
-            ListTile(
-              title: Text("Account Details"),
-              trailing: Icon(Icons.account_circle),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            Divider(),
-            ListTile(
-                title: Text("Logout"),
-                trailing: Icon(Icons.exit_to_app),
-                onTap: () {
-                  logOut();
-                  Navigator.pop(context);
-                }),
-          ],
+        key: _scaffoldKey,
+        backgroundColor: themeColor,
+        appBar: AppBar(
+          title: Text(""),
+          elevation:
+              defaultTargetPlatform == TargetPlatform.android ? 1.0 : 0.0,
+          leading: new IconButton(
+              icon: new Icon(Icons.account_circle),
+              onPressed: () => _scaffoldKey.currentState.openDrawer()),
         ),
-      ),
-      body: Stack(children: <Widget>[
-        _buildOffstageNavigator(TabItem.allRooms),
-        _buildOffstageNavigator(TabItem.myRooms),
-        _buildOffstageNavigator(TabItem.friends),
-      ]),
-      bottomNavigationBar: BottomNavigation(
-        currentTab: currentTab,
-        onSelectTab: _selectTab,
-      ),
-    );
+        drawer: Drawer(
+          child: ListView(
+            // padding: EdgeInsets.only(left: 10.0, top: 30.0, right: 10.0),
+            children: <Widget>[
+              UserAccountsDrawerHeader(
+                currentAccountPicture: GestureDetector(
+                  onTap: () {
+                    _pickSaveImage();
+                  },
+                  child: CircleAvatar(
+                    backgroundImage:
+                        _user.photoUrl == null || _user.photoUrl == ""
+                            ? ExactAssetImage('assets/user.png')
+                            : NetworkImage(_user.photoUrl),
+                    backgroundColor: Colors.grey,
+                  ),
+                ),
+                accountName: Text(_user.displayName ?? ""),
+                accountEmail: Text(_user.email ?? ""),
+              ),
+              ListTile(
+                title: Text("Search Rooms"),
+                trailing: Icon(Icons.search),
+              ),
+              ListTile(
+                title: Text("Conversations"),
+                trailing: Icon(Icons.chat),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => Chat(roomId: "", title: "Genel",)));
+                },
+              ),
+              Divider(),
+              ListTile(
+                title: Text("Account Details"),
+                trailing: Icon(Icons.account_circle),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              Divider(),
+              ListTile(
+                  title: Text("Logout"),
+                  trailing: Icon(Icons.exit_to_app),
+                  onTap: () {
+                    logOut();
+                    Navigator.pop(context);
+                  }),
+            ],
+          ),
+        ),
+        body: currentContent,
+        bottomNavigationBar: BottomNavigationBar(
+          onTap: onTabTapped,
+          currentIndex: _currentIndex,
+          items: [
+            BottomNavigationBarItem(
+              icon: new Icon(Icons.home,  color: _currentIndex == 0 ?  Color(0xFFFF3031) :  Color(0xFF99AAAB)),
+              title: new Text('Home',style: TextStyle(color:  _currentIndex == 0 ?  Color(0xFFFF3031) :  Color(0xFF99AAAB)),),
+
+            ),
+            BottomNavigationBarItem(
+              icon: new Icon(Icons.chat, color:  _currentIndex == 1 ?  Color(0XFF26ae60) :  Color(0xFF99AAAB)),
+              title: new Text('My Rooms',style: TextStyle(color:  _currentIndex == 1 ?  Color(0XFF26ae60) :  Color(0xFF99AAAB)),),
+            ),
+            BottomNavigationBarItem(
+              icon: new Icon(Icons.contact_mail, color:  _currentIndex == 2 ?  Color(0XFF4834DF) :  Color(0xFF99AAAB)),
+              title: new Text('Friends',style: TextStyle(color: _currentIndex == 2 ?  Color(0XFF4834DF) :  Color(0xFF99AAAB)),))
+          ],
+        ));
   }
 
   Widget _buildOffstageNavigator(TabItem tabItem) {
@@ -189,5 +259,23 @@ class _HomePageState extends State<HomePage> {
         tabItem: tabItem,
       ),
     );
+  }
+
+  void onTabTapped(int index) {
+    setState(() {
+      switch (index) {
+        case 0:
+          currentContent = RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>());
+        break;
+          case 1:
+          currentContent = RoomListTab(tabItem: TabItem.myRooms,onlyMyRoom: true, scaffoldKey: GlobalKey<ScaffoldState>());
+        break;
+          case 2:
+          currentContent = UserListTab(tabItem: TabItem.friends, scaffoldKey:GlobalKey<ScaffoldState>());
+          break;
+        default:
+      }
+      _currentIndex = index;
+    });
   }
 }

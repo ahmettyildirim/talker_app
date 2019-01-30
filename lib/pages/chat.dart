@@ -6,31 +6,33 @@ import 'package:toast/toast.dart';
 
 class Chat extends StatelessWidget {
   final String roomId;
-  Chat({Key key,@required this.roomId}) : super(key: key);
+  final String title; 
+  Chat({Key key,@required this.roomId, @required this.title = ""}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(
         title: new Text(
-          'CHAT',
+         title == null ? "" : title,
           style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
-      body: ChatScreen(),
+      body: ChatScreen(roomId: roomId),
     );
   }
 }
 
 class ChatScreen extends StatefulWidget {
+  final String roomId;
   ChatScreen({
-    Key key,
+    Key key,this.roomId
    
   }) : super(key: key);
 
   @override
-  State createState() => new ChatScreenState();
+  State createState() => new ChatScreenState(roomId: roomId);
 }
 
 class ChatScreenState extends State<ChatScreen> {
@@ -50,6 +52,7 @@ class ChatScreenState extends State<ChatScreen> {
   int latestShowedDateDay = 0;
   var listMessage;
   void onSendMessage(String content, int type) {
+    
     // type: 0 = text, 1 = image, 2 = sticker
     if (content.trim() != '') {
       textEditingController.clear();
@@ -105,11 +108,11 @@ class ChatScreenState extends State<ChatScreen> {
     String senderId = document.data["senderId"];
     DateTime date = DateTime.fromMillisecondsSinceEpoch(
         int.parse(document.data['timestamp']));
-    if (date.day != DateTime.now().day && date.day != latestShowedDateDay) {
-      Toast.show('${date.day}.${date.month}.${date.year}', context,
-          duration: Toast.LENGTH_SHORT, gravity: Toast.TOP);
-      latestShowedDateDay = date.day;
-    }
+    // if (date.day != DateTime.now().day && date.day != latestShowedDateDay) {
+    //   Toast.show('${date.day}.${date.month}.${date.year}', context,
+    //       duration: Toast.LENGTH_SHORT, gravity: Toast.TOP);
+    //   latestShowedDateDay = date.day;
+    // }
     // Right (my message)
     return Row(
       children: <Widget>[
@@ -265,12 +268,18 @@ class ChatScreenState extends State<ChatScreen> {
   Widget buildListMessage() {
     return Flexible(
       child: StreamBuilder(
-        stream: Firestore.instance
+        stream: roomId.isEmpty ? 
+        Firestore.instance
             .collection('conversations')
             .orderBy('timestamp', descending: true)
+            .limit(20).snapshots()
+            :
+        Firestore.instance
+            .collection('conversations')
             .where("roomId", isEqualTo: roomId)
+            .orderBy('timestamp', descending: true)
             .limit(20)
-            .snapshots(),
+        .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(
@@ -278,7 +287,8 @@ class ChatScreenState extends State<ChatScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(themeColor)));
           } else {
             listMessage = snapshot.data.documents;
-            return ListView.builder(
+            return 
+              ListView.builder(
               padding: EdgeInsets.all(10.0),
               itemBuilder: (context, index) =>
                   buildItem(index, snapshot.data.documents[index]),
