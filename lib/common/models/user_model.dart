@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:talker_app/common/functions/data_repository.dart';
 
 class UserModel {
   String _uid;
@@ -8,16 +9,32 @@ class UserModel {
   String photoUrl;
   String phoneNumber;
   String providerId;
-  FirebaseUser _fireBaseUser;
+  
+  String get uid => this._uid;
   UserModel(this._uid,
       {this.email,
       this.displayName = "",
       this.phoneNumber = "",
       this.providerId = "",
       this.photoUrl = ""});
+  DocumentReference reference;
+           
+  UserModel.fromMap(Map<String, dynamic> map, {this.reference})
+      : assert(map[FieldKeys.uid] != null, "UserId cannot be null"),
+        _uid = map[FieldKeys.uid],
+        email = map[FieldKeys.email] ?? "",
+        displayName = map[FieldKeys.displayName],
+        photoUrl = map[FieldKeys.photoUrl] ?? "",
+        phoneNumber = map[FieldKeys.phoneNumber],
+        providerId = map[FieldKeys.providerId];
 
-  String get uid => this._uid;
+  UserModel.fromSnapshot(DocumentSnapshot snapshot)
+      : this.fromMap(snapshot.data, reference: snapshot.reference);
 }
+
+
+
+
 
 class UserModelRepository {
   static final UserModelRepository instance = UserModelRepository();

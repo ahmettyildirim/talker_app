@@ -43,7 +43,7 @@ class TabNavigator extends StatelessWidget {
             break;
           case TabItem.friends:
             return UserListTab(
-                tabItem: tabItem, scaffoldKey: GlobalKey<ScaffoldState>());
+                 scaffoldKey: GlobalKey<ScaffoldState>());
             break;
           default:
         }

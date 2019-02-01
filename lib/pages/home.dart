@@ -4,8 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:talker_app/common/constants.dart';
+import 'package:talker_app/common/functions/data_repository.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:image_picker/image_picker.dart';
@@ -46,7 +48,10 @@ class PlaceholderWidget extends StatelessWidget {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => Chat(roomId: "",title: "Genel",)));
+                          builder: (context) => Chat(
+                                roomId: "",
+                                title: "Genel",
+                              )));
                 }),
           ],
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,11 +71,15 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final List<Widget> _children = [
-    RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>()),
+    RoomListTab(
+        tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>()),
     PlaceholderWidget(Colors.green),
 
     // RoomListTab(tabItem: TabItem.myRooms,onlyMyRoom: true, scaffoldKey: GlobalKey<ScaffoldState>()),
-    UserListTab(tabItem: TabItem.friends, scaffoldKey:GlobalKey<ScaffoldState>() ,),
+    UserListTab(
+     
+      scaffoldKey: GlobalKey<ScaffoldState>(),
+    ),
   ];
   TabItem currentTab = TabItem.allRooms;
   Map<TabItem, GlobalKey<NavigatorState>> navigatorKeys = {
@@ -93,7 +102,7 @@ class _HomePageState extends State<HomePage> {
     await FirebaseAuth.instance.signOut();
     bool isSignedIn = await _googleSignIn.isSignedIn();
     if (isSignedIn) {
-      await _googleSignIn.disconnect();
+      // await _googleSignIn.disconnect();
       await _googleSignIn.signOut();
     }
     UserModelRepository.instance.clearCurrentUser();
@@ -155,13 +164,34 @@ class _HomePageState extends State<HomePage> {
     return url;
   }
 
+  handleAppLifecycleState() async{
+    SystemChannels.lifecycle.setMessageHandler((msg) {
+
+      switch (msg) {
+        case "AppLifecycleState.paused":
+        case "AppLifecycleState.inactive":
+        case "AppLifecycleState.suspending":
+        DataRepository.instance.getUserActiveRoom().then((onValue){
+          DataRepository.instance.removeUserActiveRoom();
+        });
+
+          //_lastLifecyleState = AppLifecycleState.paused;
+          break;
+        default:
+      }
+    });
+  }
+
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    _currentIndex=0;
-    currentContent = RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>());
+    handleAppLifecycleState();
+    _currentIndex = 0;
+    currentContent = RoomListTab(
+        tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>());
   }
+
   @override
   Widget build(BuildContext context) {
     _user = UserModelRepository.instance.currentUser;
@@ -208,7 +238,10 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => Chat(roomId: "", title: "Genel",)));
+                          builder: (context) => Chat(
+                                roomId: "",
+                                title: "Genel",
+                              )));
                 },
               ),
               Divider(),
@@ -236,17 +269,43 @@ class _HomePageState extends State<HomePage> {
           currentIndex: _currentIndex,
           items: [
             BottomNavigationBarItem(
-              icon: new Icon(Icons.home,  color: _currentIndex == 0 ?  Color(0xFFFF3031) :  Color(0xFF99AAAB)),
-              title: new Text('Home',style: TextStyle(color:  _currentIndex == 0 ?  Color(0xFFFF3031) :  Color(0xFF99AAAB)),),
-
+              icon: new Icon(Icons.home,
+                  color: _currentIndex == 0
+                      ? Color(0xFFFF3031)
+                      : Color(0xFF99AAAB)),
+              title: new Text(
+                'Home',
+                style: TextStyle(
+                    color: _currentIndex == 0
+                        ? Color(0xFFFF3031)
+                        : Color(0xFF99AAAB)),
+              ),
             ),
             BottomNavigationBarItem(
-              icon: new Icon(Icons.chat, color:  _currentIndex == 1 ?  Color(0XFF26ae60) :  Color(0xFF99AAAB)),
-              title: new Text('My Rooms',style: TextStyle(color:  _currentIndex == 1 ?  Color(0XFF26ae60) :  Color(0xFF99AAAB)),),
+              icon: new Icon(Icons.chat,
+                  color: _currentIndex == 1
+                      ? Color(0XFF26ae60)
+                      : Color(0xFF99AAAB)),
+              title: new Text(
+                'My Rooms',
+                style: TextStyle(
+                    color: _currentIndex == 1
+                        ? Color(0XFF26ae60)
+                        : Color(0xFF99AAAB)),
+              ),
             ),
             BottomNavigationBarItem(
-              icon: new Icon(Icons.contact_mail, color:  _currentIndex == 2 ?  Color(0XFF4834DF) :  Color(0xFF99AAAB)),
-              title: new Text('Friends',style: TextStyle(color: _currentIndex == 2 ?  Color(0XFF4834DF) :  Color(0xFF99AAAB)),))
+                icon: new Icon(Icons.contact_mail,
+                    color: _currentIndex == 2
+                        ? Color(0XFF4834DF)
+                        : Color(0xFF99AAAB)),
+                title: new Text(
+                  'Friends',
+                  style: TextStyle(
+                      color: _currentIndex == 2
+                          ? Color(0XFF4834DF)
+                          : Color(0xFF99AAAB)),
+                ))
           ],
         ));
   }
@@ -265,13 +324,19 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       switch (index) {
         case 0:
-          currentContent = RoomListTab(tabItem: TabItem.allRooms, scaffoldKey: GlobalKey<ScaffoldState>());
-        break;
-          case 1:
-          currentContent = RoomListTab(tabItem: TabItem.myRooms,onlyMyRoom: true, scaffoldKey: GlobalKey<ScaffoldState>());
-        break;
-          case 2:
-          currentContent = UserListTab(tabItem: TabItem.friends, scaffoldKey:GlobalKey<ScaffoldState>());
+          currentContent = RoomListTab(
+              tabItem: TabItem.allRooms,
+              scaffoldKey: GlobalKey<ScaffoldState>());
+          break;
+        case 1:
+          currentContent = RoomListTab(
+              tabItem: TabItem.myRooms,
+              onlyMyRoom: true,
+              scaffoldKey: GlobalKey<ScaffoldState>());
+          break;
+        case 2:
+          currentContent = UserListTab(
+              scaffoldKey: GlobalKey<ScaffoldState>());
           break;
         default:
       }

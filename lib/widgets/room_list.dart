@@ -3,15 +3,17 @@
 // found in the LICENSE file.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:collection/collection.dart' show lowerBound;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:talker_app/common/constants.dart';
+import 'package:talker_app/common/functions/data_repository.dart';
+import 'package:talker_app/common/models/room_model.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:talker_app/widgets/bottom_navigation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:badges/badges.dart';
 
 enum RoomListTabAction { reset, horizontalSwipe, leftSwipe, rightSwipe }
 
@@ -29,6 +31,8 @@ class RoomListTab extends StatefulWidget {
 }
 
 class RoomListTabState extends State<RoomListTab> {
+  
+  final DataRepository _dataInstance = DataRepository.instance;
   DismissDirection _dismissDirection = DismissDirection.horizontal;
   String _searchText = "";
   final TextEditingController _filter = new TextEditingController();
@@ -37,7 +41,7 @@ class RoomListTabState extends State<RoomListTab> {
   Widget _appBarTitle = new Text("");
   var listMessage;
 
- RoomListTabState() {
+  RoomListTabState() {
     _filter.addListener(() {
       if (_filter.text.isEmpty) {
         setState(() {
@@ -52,13 +56,16 @@ class RoomListTabState extends State<RoomListTab> {
   }
 
 
-  void getAllRooms() {}
-
   Widget buildListMessage() {
     return StreamBuilder(
       stream: widget.onlyMyRoom
-          ? Firestore.instance.collection('rooms').where("users", arrayContains: UserModelRepository.instance.currentUser.uid).snapshots() :
-         Firestore.instance.collection('rooms').snapshots(),
+          ? 
+          Firestore.instance
+              .collection('rooms')
+              .where("users",
+                  arrayContains: UserModelRepository.instance.currentUser.uid)
+              .snapshots()
+          : _dataInstance.getRooms(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return Center(
@@ -69,15 +76,13 @@ class RoomListTabState extends State<RoomListTab> {
           return ListView(
             padding: const EdgeInsets.all(0.0),
             children: listMessage.map<Widget>((dynamic item) {
-              return 
-               _RoomListItem(
+              return _RoomListItem(
                 snapShot: item,
                 onArchive: _handleArchive,
                 onDelete: _handleDelete,
                 dismissDirection: _dismissDirection,
                 searchText: _searchText,
               );
-            
             }).toList(),
           );
         }
@@ -153,26 +158,30 @@ class RoomListTabState extends State<RoomListTab> {
     try {
       String uuid = Uuid().v1();
       String userId = UserModelRepository.instance.currentUser.uid;
-      var documentReference =
-          Firestore.instance.collection('rooms').document(uuid);
-      await documentReference.setData({
-        'roomId': uuid,
-        'ownerId': userId,
-        'name': roomName,
-        'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-        'users': [userId]
-      });
-      var userReference =
-          Firestore.instance.collection('users').document(userId);
-      await userReference.updateData(
-        {
-          'rooms': FieldValue.arrayUnion([uuid]),
-        },
+      // var documentReference =
+      //     Firestore.instance.collection('rooms').document(uuid);
+      // await documentReference.setData({
+      //   'roomId': uuid,
+      //   'ownerId': userId,
+      //   'name': roomName,
+      //   'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+      //   'users': [userId]
+      // });
+      // var userReference =
+      //     Firestore.instance.collection('users').document(userId);
+      // await userReference.updateData(
+      //   {
+      //     'rooms': FieldValue.arrayUnion([uuid]),
+      //   },
+      // );
+       var newRoom = RoomModel(
+          createdUser: userId,
+          name: roomName
       );
+      _dataInstance.addNewRoom(newRoom);
       Navigator.pop(context);
     } catch (e) {}
   }
-
 
   Widget _buildBar(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -180,24 +189,20 @@ class RoomListTabState extends State<RoomListTab> {
       centerTitle: true,
       backgroundColor: theme.selectedRowColor,
       title: TextField(
-          controller: _filter,
-          decoration: new InputDecoration(
-            prefixIcon: new Icon(Icons.search),
-            hintText: 'Search...'
-          ),
+        controller: _filter,
+        decoration: new InputDecoration(
+            prefixIcon: new Icon(Icons.search), hintText: 'Search...'),
       ),
       elevation: 0.0,
-      
     );
   }
-  
- 
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     Widget body;
     body = Scaffold(
-        appBar:  _buildBar(context) ,
+        appBar: _buildBar(context),
         floatingActionButton: widget.tabItem == TabItem.allRooms
             ? FloatingActionButton(
                 child: Icon(Icons.add),
@@ -256,11 +261,11 @@ class _RoomListItem extends StatelessWidget {
   final Future<void> Function(String) onDelete;
 
   Future<void> _handleArchive() async {
-    onArchive(snapShot["roomId"]);
+    onArchive(snapShot.documentID);
   }
 
   Future<void> _handleDelete() async {
-    onDelete(snapShot["roomId"]);
+    onDelete(snapShot.documentID);
   }
 
   @override
@@ -271,70 +276,105 @@ class _RoomListItem extends StatelessWidget {
         const CustomSemanticsAction(label: 'Archive'): _handleArchive,
         const CustomSemanticsAction(label: 'Delete'): _handleDelete,
       },
-      child: !snapShot["name"].toString().contains(searchText) ? 
-      null:
-      Dismissible(
-        key: ObjectKey(snapShot),
-        direction: dismissDirection,
-        onDismissed: (DismissDirection direction) {
-          if (direction == DismissDirection.endToStart) {
-            _handleArchive();
-          } else
-            _handleDelete();
-          // Scaffold.of(context)
-          //           .showSnackBar(SnackBar(content: Text("snackbar")));
-        },
-        background: Container(
-            color: theme.primaryColor,
-            child: const ListTile(
-                leading: Icon(Icons.delete, color: Colors.grey, size: 36.0))),
-        secondaryBackground: Container(
-            color: theme.primaryColor,
-            child: const ListTile(
-                trailing: Icon(Icons.archive, color: Colors.grey, size: 36.0))),
-        child: Container(
-          decoration: BoxDecoration(
-              color: theme.canvasColor,
-              border: Border(bottom: BorderSide(color: theme.dividerColor))),
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => Chat(
-                            roomId: snapShot["roomId"],
-                            title: snapShot["name"],
-                          )));
-            },
-            child: ListData(
-                title: snapShot["name"],
-                subtitle:
-                    '${snapShot["users"].length.toString()} user${snapShot["users"].length > 1 ? 's are' : ' is'} online in this room',
-                image: DecorationImage(
-                  image: new ExactAssetImage('assets/room.png'),
-                  fit: BoxFit.cover,
-                )),
-          ),
-        ),
-      ),
+      child: !snapShot["name"].toString().contains(searchText)
+          ? null
+          : Dismissible(
+              key: ObjectKey(snapShot),
+              direction: dismissDirection,
+              onDismissed: (DismissDirection direction) {
+                if (direction == DismissDirection.endToStart) {
+                  _handleArchive();
+                } else
+                  _handleDelete();
+                // Scaffold.of(context)
+                //           .showSnackBar(SnackBar(content: Text("snackbar")));
+              },
+              background: Container(
+                  color: theme.primaryColor,
+                  child: const ListTile(
+                      leading:
+                          Icon(Icons.delete, color: Colors.grey, size: 36.0))),
+              secondaryBackground: Container(
+                  color: theme.primaryColor,
+                  child: const ListTile(
+                      trailing:
+                          Icon(Icons.archive, color: Colors.grey, size: 36.0))),
+              child: Container(
+                decoration: BoxDecoration(
+                    color: theme.canvasColor,
+                    border:
+                        Border(bottom: BorderSide(color: theme.dividerColor))),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Chat(
+                                  roomId: snapShot.documentID,
+                                  title: snapShot["name"],
+                                )));
+                  },
+                  child: ListData(
+                      roomId: snapShot.documentID,
+                      title: snapShot["name"],
+                      subtitle:
+                          // '${snapShot["users"].length.toString()} user${snapShot["users"].length > 1 ? 's are' : ' is'} online in this room',
+                          'TODO : subtitle',
+                      image: DecorationImage(
+                        image: new ExactAssetImage('assets/room.png'),
+                        fit: BoxFit.cover,
+                      )),
+                ),
+              ),
+            ),
     );
   }
 }
 
-class ListData extends StatelessWidget {
+class ListData extends StatefulWidget {
   final EdgeInsets margin;
   final double width;
   final String title;
   final String subtitle;
+  final String roomId;
   final DecorationImage image;
-  ListData({this.margin, this.subtitle, this.title, this.width, this.image});
+  _ListDataState createState() => _ListDataState();
+  ListData(
+      {this.roomId,
+      this.margin,
+      this.subtitle,
+      this.title,
+      this.width,
+      this.image});
+}
+
+class _ListDataState extends State<ListData> {
+  int badgeCount = 0;
+  _getBadgeCount(String roomId) async{
+    // var allDocumentReference = await Firestore.instance
+    //     .collection('conversations').
+    //     where("roomId", isEqualTo: roomId).
+    //     getDocuments();
+    
+    // var readDocumentReference = await Firestore.instance
+    //     .collection('conversations').
+    //     where("roomId", isEqualTo: roomId).
+    //     where("readBy", arrayContains: UserModelRepository.instance.currentUser.uid).getDocuments();
+    // var count = allDocumentReference.documents.length -  readDocumentReference.documents.length;
+    var count = await DataRepository.instance.getBadgeCount(roomId);
+    setState(() {
+     badgeCount=count; 
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    _getBadgeCount(widget.roomId);
     return (new Container(
       alignment: Alignment.center,
-      margin: margin,
-      width: width,
+      margin: widget.margin,
+      width: widget.width,
       decoration: new BoxDecoration(
         color: theme.selectedRowColor,
         border: new Border(
@@ -347,30 +387,38 @@ class ListData extends StatelessWidget {
       child: new Row(
         children: <Widget>[
           new Container(
-              margin: new EdgeInsets.only(
-                  left: 20.0, top: 10.0, bottom: 10.0, right: 20.0),
-              width: 60.0,
-              height: 60.0,
-              decoration:
-                  new BoxDecoration(shape: BoxShape.circle, image: image)),
+            margin: new EdgeInsets.only(
+                left: 20.0, top: 10.0, bottom: 10.0, right: 20.0),
+            width: 60.0,
+            height: 60.0,
+            decoration:
+                new BoxDecoration(shape: BoxShape.circle, image: widget.image),
+            child: BadgeIconButton(
+              itemCount: badgeCount, // required
+              icon: Icon(Icons.chat), // required
+              badgeColor: Colors.green, // default: Colors.red
+              badgeTextColor: Colors.white, // default: Colors.white
+              hideZeroCount: true, // default: true
+            ),
+          ),
           new Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               new Text(
-                title,
+                widget.title,
                 style:
                     new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w400),
               ),
               new Padding(
                 padding: new EdgeInsets.only(top: 5.0),
                 child: new Text(
-                  subtitle,
+                  widget.subtitle,
                   style: new TextStyle(
                       color: Colors.grey,
                       fontSize: 14.0,
                       fontWeight: FontWeight.w300),
                 ),
-              )
+              ),
             ],
           )
         ],

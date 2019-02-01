@@ -1,78 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:talker_app/common/constants.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:talker_app/common/functions/data_repository.dart';
+import 'package:talker_app/common/models/conversation_model.dart';
 import 'package:talker_app/common/models/user_model.dart';
+import 'package:talker_app/common/string_values.dart';
 import 'package:toast/toast.dart';
 
 class Chat extends StatelessWidget {
   final String roomId;
-  final String title; 
-  Chat({Key key,@required this.roomId, @required this.title = ""}) : super(key: key);
+  final String title;
+  Chat({Key key, @required this.roomId, this.title = ""})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-      appBar: new AppBar(
-        title: new Text(
-         title == null ? "" : title,
-          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+    return WillPopScope(
+        onWillPop: _backButtonPressed,
+          child: Scaffold(
+        appBar: AppBar(
+          title: new Text(
+            title == null ? "" : title,
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
+        body: ChatScreen(roomId: roomId),
       ),
-      body: ChatScreen(roomId: roomId),
     );
   }
+  Future<bool> _backButtonPressed()async {
+    DataRepository.instance.removeUserActiveRoom();
+    return Future.value(true);
+   }
 }
-
 class ChatScreen extends StatefulWidget {
   final String roomId;
-  ChatScreen({
-    Key key,this.roomId
-   
-  }) : super(key: key);
+  ChatScreen({Key key, this.roomId}) : super(key: key);
 
   @override
   State createState() => new ChatScreenState(roomId: roomId);
 }
-
 class ChatScreenState extends State<ChatScreen> {
   final String roomId;
   ChatScreenState({Key key, this.roomId});
-
-
-  UserModel user = UserModelRepository.instance.currentUser;
+  
+  final UserModel _currentUser = UserModelRepository.instance.currentUser;
+  final DataRepository _dataInstance = DataRepository.instance;
   final TextEditingController textEditingController =
-      new TextEditingController();
-  final ScrollController listScrollController = new ScrollController();
-  final FocusNode focusNode = new FocusNode();
-
+      TextEditingController();
+  final ScrollController listScrollController = ScrollController();
+  final FocusNode focusNode = FocusNode();
   bool isLoading = false;
-  bool isShowSticker = false;
-  bool toastShowed = false;
-  int latestShowedDateDay = 0;
   var listMessage;
-  void onSendMessage(String content, int type) {
-    
-    // type: 0 = text, 1 = image, 2 = sticker
+  void onSendMessage(String content, int type)async {
     if (content.trim() != '') {
       textEditingController.clear();
-
-      var documentReference = Firestore.instance
-          .collection('conversations')
-          .document(DateTime.now().millisecondsSinceEpoch.toString());
-
-      Firestore.instance.runTransaction((transaction) async {
-        await transaction.set(
-          documentReference,
-          {
-            'senderId': user.uid,
-            'sender': user.displayName,
-            'text': content,
-            'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-            'roomId':roomId
-          },
-        );
-      });
+      
+      var newConversation = ConversationModel(
+          senderId: _currentUser.uid,
+          sender: _currentUser.displayName,
+          text: content,
+          roomId: roomId
+      );
+      await _dataInstance.sendNewMessage(newConversation);
       listScrollController.animateTo(0.0,
           duration: Duration(milliseconds: 300), curve: Curves.easeOut);
     } else {
@@ -84,7 +75,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool isLastMessageLeft(int index) {
     if ((index > 0 &&
             listMessage != null &&
-            listMessage[index - 1]['senderId'] == user.uid) ||
+            listMessage[index - 1][FieldKeys.senderId] == _currentUser.uid) ||
         index == 0) {
       return true;
     } else {
@@ -95,25 +86,71 @@ class ChatScreenState extends State<ChatScreen> {
   bool isLastMessageRight(int index) {
     if ((index > 0 &&
             listMessage != null &&
-            listMessage[index - 1]['senderId'] != user.uid) ||
+            listMessage[index - 1][FieldKeys.senderId] != _currentUser.uid) ||
         index == 0) {
       return true;
     } else {
       return false;
     }
   }
+  @override
+  void initState() {
+    super.initState();
+     _dataInstance.addUserActiveRoom(roomId);
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return 
+       Stack(
+        children: <Widget>[
+          Column(
+            children: <Widget>[
+              // List of messages
+              buildListMessage(),
+              // Input content
+              buildInput(),
+            ],
+          ),
+          // Loading
+          buildLoading()
+        ],
+    );
+  }
 
-  Widget buildItem(int index, DocumentSnapshot document) {
-    String content = document.data["text"];
-    String senderId = document.data["senderId"];
-    DateTime date = DateTime.fromMillisecondsSinceEpoch(
-        int.parse(document.data['timestamp']));
-    // if (date.day != DateTime.now().day && date.day != latestShowedDateDay) {
-    //   Toast.show('${date.day}.${date.month}.${date.year}', context,
-    //       duration: Toast.LENGTH_SHORT, gravity: Toast.TOP);
-    //   latestShowedDateDay = date.day;
-    // }
-    // Right (my message)
+  Widget buildListMessage() {
+    return Flexible(
+      child: StreamBuilder(
+        stream:
+            _dataInstance.getConversationsOnChatRoom(roomId: roomId),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(
+                child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(themeColor)));
+          } else {
+             isLoading = false; 
+            listMessage = snapshot.data.documents;
+            _dataInstance.updateRoomLastAccessTime(roomId);
+            return ListView.builder(
+              padding: EdgeInsets.all(10.0),
+              itemBuilder: (context, index) =>
+                  buildItem(index, snapshot.data.documents[index]),
+              itemCount: snapshot.data.documents.length,
+              reverse: true,
+              controller: listScrollController,
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget buildItem(int index, dynamic document) {
+    final message = ConversationModel.fromSnapshot(document);
+    String content = message.text;
+    String senderId = message.senderId;
+    DateTime date = message.timestamp;
     return Row(
       children: <Widget>[
         Container(
@@ -122,7 +159,7 @@ class ChatScreenState extends State<ChatScreen> {
               width: double.infinity,
               child: Container(
                 child: Text(
-                 document.data["sender"] ?? '',
+                  message.sender,
                   textAlign: TextAlign.left,
                   style: TextStyle(
                       color: Colors.indigo,
@@ -167,58 +204,9 @@ class ChatScreenState extends State<ChatScreen> {
               bottom: isLastMessageRight(index) ? 20.0 : 10.0, right: 10.0),
         )
       ],
-      mainAxisAlignment: senderId == user.uid
+      mainAxisAlignment: senderId == _currentUser.uid
           ? MainAxisAlignment.end
           : MainAxisAlignment.start,
-    );
-  }
-
-  Future<bool> onBackPress() {
-    if (isShowSticker) {
-      setState(() {
-        isShowSticker = false;
-      });
-    } else {
-      Navigator.pop(context);
-    }
-
-    return Future.value(false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      child: Stack(
-        children: <Widget>[
-          Column(
-            children: <Widget>[
-              // List of messages
-              buildListMessage(),
-
-              // Input content
-              buildInput(),
-            ],
-          ),
-
-          // Loading
-          buildLoading()
-        ],
-      ),
-      onWillPop: onBackPress,
-    );
-  }
-
-  Widget buildLoading() {
-    return Positioned(
-      child: isLoading
-          ? Container(
-              child: Center(
-                child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(themeColor)),
-              ),
-              color: Colors.white.withOpacity(0.8),
-            )
-          : Container(),
     );
   }
 
@@ -234,14 +222,13 @@ class ChatScreenState extends State<ChatScreen> {
                 style: TextStyle(color: primaryColor, fontSize: 15.0),
                 controller: textEditingController,
                 decoration: InputDecoration.collapsed(
-                  hintText: 'Type your message...',
+                  hintText: StringValues.chatTypeMessage,
                   hintStyle: TextStyle(color: greyColor),
                 ),
                 focusNode: focusNode,
               ),
             ),
           ),
-
           // Button send message
           Material(
             child: new Container(
@@ -265,40 +252,18 @@ class ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget buildListMessage() {
-    return Flexible(
-      child: StreamBuilder(
-        stream: roomId.isEmpty ? 
-        Firestore.instance
-            .collection('conversations')
-            .orderBy('timestamp', descending: true)
-            .limit(20).snapshots()
-            :
-        Firestore.instance
-            .collection('conversations')
-            .where("roomId", isEqualTo: roomId)
-            .orderBy('timestamp', descending: true)
-            .limit(20)
-        .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(
+  Widget buildLoading() {
+    return Positioned(
+      child: isLoading
+          ? Container(
+              child: Center(
                 child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(themeColor)));
-          } else {
-            listMessage = snapshot.data.documents;
-            return 
-              ListView.builder(
-              padding: EdgeInsets.all(10.0),
-              itemBuilder: (context, index) =>
-                  buildItem(index, snapshot.data.documents[index]),
-              itemCount: snapshot.data.documents.length,
-              reverse: true,
-              controller: listScrollController,
-            );
-          }
-        },
-      ),
+                    valueColor: AlwaysStoppedAnimation<Color>(themeColor)),
+              ),
+              color: Colors.white.withOpacity(0.8),
+            )
+          : Container(),
     );
   }
+
 }
