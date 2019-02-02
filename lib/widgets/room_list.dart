@@ -309,10 +309,14 @@ class _RoomListItem extends StatelessWidget {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => Chat(
+                            builder: (context) => 
+                            // BubbleScreen()
+                            Chat(
                                   roomId: snapShot.documentID,
                                   title: snapShot["name"],
-                                )));
+                                )
+                                
+                                ));
                   },
                   child: ListData(
                       roomId: snapShot.documentID,
