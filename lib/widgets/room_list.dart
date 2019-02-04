@@ -268,6 +268,7 @@ class _RoomListItem extends StatelessWidget {
     onDelete(snapShot.documentID);
   }
 
+  
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);

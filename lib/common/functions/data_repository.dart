@@ -3,6 +3,7 @@ import 'package:talker_app/common/functions/helper.dart';
 import 'package:talker_app/common/models/conversation_model.dart';
 import 'package:talker_app/common/models/room_model.dart';
 import 'package:talker_app/common/models/user_model.dart';
+import 'package:flutter_geofire/flutter_geofire.dart';
 
 enum SortDirection { Ascending, Descending }
 
@@ -34,6 +35,7 @@ class FieldKeys {
   static final photoUrl = "photoUrl";
   static final phoneNumber = "phoneNumber";
   static final providerId = "providerId";
+  static final location = "location";
   
 }
 
@@ -43,6 +45,23 @@ class DataRepository {
   final UserModelRepository _userModel = UserModelRepository.instance;
 
 
+
+  void geofire(roomId)async{
+    Geofire.initialize(CollectionKeys.rooms);
+    List<String> response;
+      // Platform messages may fail, so we use a try/catch PlatformException.
+   
+      try {
+        response = await Geofire.queryAtLocation(_userModel.currentUser.currentLocation.latitude,_userModel.currentUser.currentLocation.longitude, 5);
+      } catch (e)  {
+        response = ['Failed to get platform version.'];
+      }
+      // If the widget was removed from the tree while the asynchronous platform
+      // message was in flight, we want to discard the reply rather than calling
+      // setState to update our non-existent appearance.
+     
+
+  }
   CollectionReference roomReference() => _firestore.collection(CollectionKeys.rooms);
   CollectionReference userReference() => _firestore.collection(CollectionKeys.users);
   DocumentReference _getNewDocumentReference(String collectionName) =>
@@ -101,8 +120,10 @@ class DataRepository {
     //         .collection(CollectionKeys.conversations)
     //         .orderBy(FieldKeys.timestamp, descending: true)
     //         .snapshots();
+    //geofire(roomId);
       return _roomRef(roomId)
             .collection(CollectionKeys.messages)
+            // .where(FieldKeys.location,)
             .orderBy(FieldKeys.timestamp,
                 descending: direction == SortDirection.Ascending)
             .snapshots();
@@ -119,6 +140,7 @@ class DataRepository {
       FieldKeys.text: conversationModel.text,
       FieldKeys.timestamp: FieldValue.serverTimestamp(),
       FieldKeys.roomId: conversationModel.roomId,
+      FieldKeys.location:conversationModel.location
     };
     await _addNewDocument(documentReference, model);
     // DFawait updateLastAccessTime(conversationModel.roomId);

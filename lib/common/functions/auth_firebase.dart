@@ -94,7 +94,7 @@ class FirebaseAuthentication extends BaseAuth {
   @override
   Future<UserModel> currentUser() async {
     FirebaseUser user = await _firebaseAuth.currentUser();
-    UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
+    await UserModelRepository.instance.setCurrentUserWithFirebaseUser(user);
     return UserModelRepository.instance.currentUser;
   }
 

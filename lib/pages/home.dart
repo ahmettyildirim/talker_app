@@ -12,6 +12,8 @@ import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/pages/chat.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:talker_app/pages/map.dart';
+import 'package:talker_app/pages/maps_flutter.dart';
 import 'package:talker_app/widgets/bottom_navigation.dart';
 import 'package:talker_app/widgets/room_list.dart';
 import 'package:talker_app/widgets/tab_navigator.dart';
@@ -231,17 +233,25 @@ class _HomePageState extends State<HomePage> {
                 trailing: Icon(Icons.search),
               ),
               ListTile(
-                title: Text("Conversations"),
-                trailing: Icon(Icons.chat),
+                title: Text("My location"),
+                trailing: Icon(Icons.map),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => Chat(
-                                roomId: "",
-                                title: "Genel",
-                              )));
+                          builder: (context) => GoogleMapExample()));
+                },
+              ),
+              ListTile(
+                title: Text("My location with Flutter"),
+                trailing: Icon(Icons.map),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ContactPage()));
                 },
               ),
               Divider(),

@@ -4,6 +4,7 @@ import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/common/functions/auth_provider.dart';
 import 'package:talker_app/pages/home.dart';
 import 'package:talker_app/pages/login.dart';
+import 'package:talker_app/pages/map.dart';
 import 'package:toast/toast.dart';
 
 class RootPage extends StatefulWidget {

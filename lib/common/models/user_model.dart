@@ -1,7 +1,15 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:talker_app/common/functions/data_repository.dart';
-
+class UserLocation{
+  final double latitude;
+  final double longitude;
+  UserLocation(this.latitude,this.longitude);
+  
+}
 class UserModel {
   String _uid;
   String email;
@@ -9,7 +17,8 @@ class UserModel {
   String photoUrl;
   String phoneNumber;
   String providerId;
-  
+  UserLocation currentLocation;
+  bool useCustomLocation = false;
   String get uid => this._uid;
   UserModel(this._uid,
       {this.email,
@@ -39,6 +48,7 @@ class UserModel {
 class UserModelRepository {
   static final UserModelRepository instance = UserModelRepository();
   static UserModel _currentUser;
+  StreamSubscription<Position> locationSubscribe;
   Future<DocumentSnapshot> _getUserDetails(String id) async {
     DocumentSnapshot res =
         await Firestore.instance.collection('users').document(id).get();
@@ -68,6 +78,29 @@ class UserModelRepository {
               'email':user.email
             });
     }
+    await setUserLocation();
+    
+  }
+  Future<void> setUserLocation()async{
+    Geolocator().getCurrentPosition().then((onValue) {
+        _currentUser.currentLocation = UserLocation(onValue.latitude, onValue.longitude);
+        subscribeLocationChanges();
+    });
+  }
+  void subscribeLocationChanges(){
+    var geolocator = Geolocator();
+    var locationOptions = LocationOptions(accuracy: LocationAccuracy.high, distanceFilter: 10);
+    locationSubscribe =  geolocator.getPositionStream(locationOptions).listen(
+    (Position position) {
+        _currentUser.currentLocation =  UserLocation(position.latitude, position.longitude);
+    });
+  }
+  
+  void unsubscribeLocationChanges(){
+    locationSubscribe.cancel();
+  }
+  void resubscribeLocationChanges(){
+    locationSubscribe.resume();
   }
   void clearCurrentUser(){
    _currentUser = null; 
