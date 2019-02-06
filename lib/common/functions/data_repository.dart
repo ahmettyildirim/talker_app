@@ -3,8 +3,7 @@ import 'package:talker_app/common/functions/helper.dart';
 import 'package:talker_app/common/models/conversation_model.dart';
 import 'package:talker_app/common/models/room_model.dart';
 import 'package:talker_app/common/models/user_model.dart';
-import 'package:flutter_geofire/flutter_geofire.dart';
-
+import 'package:geoflutterfire/geoflutterfire.dart';
 enum SortDirection { Ascending, Descending }
 
 class CollectionKeys {
@@ -14,9 +13,9 @@ class CollectionKeys {
   static final rooms = "rooms";
 }
 
-
 class FieldKeys {
   static final timestamp = "timestamp";
+  static final timestampInt = "timestampInt";
   static final roomId = "roomId";
   static final rooms = "rooms";
   static final senderId = "senderId";
@@ -36,6 +35,7 @@ class FieldKeys {
   static final phoneNumber = "phoneNumber";
   static final providerId = "providerId";
   static final location = "location";
+  static final geopoint = "geopoint";
   
 }
 
@@ -43,41 +43,29 @@ class DataRepository {
   static final DataRepository instance = DataRepository();
   final Firestore _firestore = Firestore.instance;
   final UserModelRepository _userModel = UserModelRepository.instance;
+  Geoflutterfire geo = Geoflutterfire();
 
+  
 
-
-  void geofire(roomId)async{
-    Geofire.initialize(CollectionKeys.rooms);
-    List<String> response;
-      // Platform messages may fail, so we use a try/catch PlatformException.
-   
-      try {
-        response = await Geofire.queryAtLocation(_userModel.currentUser.currentLocation.latitude,_userModel.currentUser.currentLocation.longitude, 5);
-      } catch (e)  {
-        response = ['Failed to get platform version.'];
-      }
-      // If the widget was removed from the tree while the asynchronous platform
-      // message was in flight, we want to discard the reply rather than calling
-      // setState to update our non-existent appearance.
-     
-
-  }
-  CollectionReference roomReference() => _firestore.collection(CollectionKeys.rooms);
-  CollectionReference userReference() => _firestore.collection(CollectionKeys.users);
+  CollectionReference roomReference() =>
+      _firestore.collection(CollectionKeys.rooms);
+  CollectionReference userReference() =>
+      _firestore.collection(CollectionKeys.users);
   DocumentReference _getNewDocumentReference(String collectionName) =>
       _firestore.collection(collectionName).document();
-  DocumentReference _getCurrentDocumentReference(String collectionName,String documentId) =>
+  DocumentReference _getCurrentDocumentReference(
+          String collectionName, String documentId) =>
       _firestore.collection(collectionName).document(documentId);
   DocumentReference _newRoomRef() =>
       _getNewDocumentReference(CollectionKeys.rooms);
   DocumentReference _roomRef(String documentId) =>
-      _getCurrentDocumentReference(CollectionKeys.rooms,documentId);
+      _getCurrentDocumentReference(CollectionKeys.rooms, documentId);
   DocumentReference _userRef() =>
       _getNewDocumentReference(CollectionKeys.users);
-  DocumentReference _currentUserRef() =>
-      _getCurrentDocumentReference(CollectionKeys.users,_userModel.currentUser.uid);
+  DocumentReference _currentUserRef() => _getCurrentDocumentReference(
+      CollectionKeys.users, _userModel.currentUser.uid);
   DocumentReference _messageRef(String roomId) =>
-      _getCurrentDocumentReference(CollectionKeys.rooms,roomId)
+      _getCurrentDocumentReference(CollectionKeys.rooms, roomId)
           .collection(CollectionKeys.messages)
           .document();
   Future<void> _addNewDocument(
@@ -86,29 +74,31 @@ class DataRepository {
       await transaction.set(documentReference, data);
     });
   }
+
   //room operations
-  Future<void> addNewRoom(RoomModel roomModel)async{
-      Map<String, dynamic> model = {
+  Future<void> addNewRoom(RoomModel roomModel) async {
+   
+    Map<String, dynamic> model = {
       FieldKeys.name: roomModel.name,
       FieldKeys.createdUser: roomModel.createdUser,
       FieldKeys.createdDate: FieldValue.serverTimestamp(),
-      FieldKeys.roomUsers:FieldValue.arrayUnion([_userModel.currentUser.uid])
+      FieldKeys.roomUsers: FieldValue.arrayUnion([_userModel.currentUser.uid]),
+      FieldKeys.location: Helper.instance.getCurrentGeoFirePoint().data,
     };
-    return await _addNewDocument(_newRoomRef(),model);
+  
+    return await _addNewDocument(_newRoomRef(), model);
   }
 
-  Stream<QuerySnapshot> getRooms() =>roomReference().snapshots();
-      
-  
+  Stream<QuerySnapshot> getRooms() => roomReference().snapshots();
+
   //user operations
 
-  Stream<QuerySnapshot> getAllUsers() =>userReference().snapshots();
-      
+  Stream<QuerySnapshot> getAllUsers() => userReference().snapshots();
 
   //message operations
- 
-  Stream<QuerySnapshot> getConversationsOnChatRoom(
-      {String roomId, SortDirection direction = SortDirection.Ascending}) {
+
+  Stream<List<DocumentSnapshot>> getConversationsOnChatRoom(
+      {String roomId, SortDirection direction = SortDirection.Ascending, double distance =500}) {
     // return !isNullEmpty(roomId)
     //     ? _firestore
     //         .collection(CollectionKeys.conversations)
@@ -121,37 +111,44 @@ class DataRepository {
     //         .orderBy(FieldKeys.timestamp, descending: true)
     //         .snapshots();
     //geofire(roomId);
-      return _roomRef(roomId)
-            .collection(CollectionKeys.messages)
-            // .where(FieldKeys.location,)
-            .orderBy(FieldKeys.timestamp,
-                descending: direction == SortDirection.Ascending)
-            .snapshots();
-
+    GeoFirePoint center = Helper.instance.getCurrentGeoFirePoint();
+    var collectionReference =  _roomRef(roomId)
+        .collection(CollectionKeys.messages);//.orderBy(FieldKeys.timestamp, descending: direction == SortDirection.Ascending);//.orderBy(FieldKeys.timestamp, descending: direction == SortDirection.Ascending).; 
+    double radius = distance/1000;
+    return  geo.collection(collectionRef: collectionReference).within(center, radius, FieldKeys.location);
+    
+       
+    // return _roomRef(roomId)
+    //     .collection(CollectionKeys.messages)
+    //     // .where(FieldKeys.location,)
+    //     .orderBy(FieldKeys.timestamp,
+    //         descending: direction == SortDirection.Ascending)
+    //     .snapshots();
   }
 
   Future<void> sendNewMessage(ConversationModel conversationModel) async {
     var documentReference =
         // _getNewDocumentReference(CollectionKeys.conversations);
-    _messageRef(conversationModel.roomId);
+        _messageRef(conversationModel.roomId);
     Map<String, dynamic> model = {
       FieldKeys.senderId: conversationModel.senderId,
       FieldKeys.sender: conversationModel.sender,
       FieldKeys.text: conversationModel.text,
       FieldKeys.timestamp: FieldValue.serverTimestamp(),
+      FieldKeys.timestampInt: DateTime.now().millisecondsSinceEpoch,
       FieldKeys.roomId: conversationModel.roomId,
-      FieldKeys.location:conversationModel.location
+      FieldKeys.location: Helper.instance.getCurrentGeoFirePoint().data,
     };
     await _addNewDocument(documentReference, model);
     // DFawait updateLastAccessTime(conversationModel.roomId);
   }
-   Future<void> updateRoomLastAccessTime(String roomId) async {
-    _currentUserRef().collection(CollectionKeys.rooms).document(roomId).setData({
-      FieldKeys.lastAccessTime : FieldValue.serverTimestamp()
-    });
+
+  Future<void> updateRoomLastAccessTime(String roomId) async {
+    _currentUserRef()
+        .collection(CollectionKeys.rooms)
+        .document(roomId)
+        .setData({FieldKeys.lastAccessTime: FieldValue.serverTimestamp()});
   }
-
-
 
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------

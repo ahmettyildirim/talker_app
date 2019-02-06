@@ -7,21 +7,17 @@ class ConversationModel {
   final String sender;
   final String text;
   DateTime timestamp;
+  int timestampInt;
   final String roomId;
-  double latitude;
-  double longitude;
-  GeoPoint location;
+  dynamic location;
+  GeoPoint geoPoint;
 
   DocumentReference reference;
   ConversationModel(
       {@required this.senderId,
       this.sender,
       @required this.text,
-      @required this.roomId,
-      this.longitude,
-      this.latitude}){
-        location = GeoPoint(latitude,longitude);
-      }
+      @required this.roomId});
            
   ConversationModel.fromMap(Map<String, dynamic> map, {this.reference})
       : assert(map[FieldKeys.senderId] != null, "SenderId cannot be null"),
@@ -32,8 +28,11 @@ class ConversationModel {
         sender = map[FieldKeys.sender] ?? "",
         text = map[FieldKeys.text],
         timestamp = map[FieldKeys.timestamp],
+        timestampInt = map[FieldKeys.timestampInt],
         roomId = map[FieldKeys.roomId],
-        location = map[FieldKeys.location];
+        location = map[FieldKeys.location],
+        geoPoint = map[FieldKeys.location] != null ? map[FieldKeys.location][FieldKeys.geopoint] : null;
+
 
   ConversationModel.fromSnapshot(DocumentSnapshot snapshot)
       : this.fromMap(snapshot.data, reference: snapshot.reference);

@@ -11,7 +11,6 @@ class ContactPage extends StatefulWidget {
 
 class ContactPageState extends State<ContactPage>
     with TickerProviderStateMixin {
-  UserModel _currentUser = UserModelRepository.instance.currentUser;
   MapController mapController;
   static LatLng myLocation;
   bool useCurrentLocation = true;
@@ -19,8 +18,8 @@ class ContactPageState extends State<ContactPage>
   void initState() {
     super.initState();
     setState(() {
-      myLocation = new LatLng(_currentUser.currentLocation.latitude,
-          _currentUser.currentLocation.longitude);
+      myLocation = new LatLng(UserModelRepository.instance.currentUser.currentLocation.latitude,
+          UserModelRepository.instance.currentUser.currentLocation.longitude);
       mapController = MapController();
     });
   }
@@ -97,10 +96,10 @@ class ContactPageState extends State<ContactPage>
                     Text("Use my current location",
                         style: TextStyle(color: Colors.indigo)),
                     Switch(
-                        value: !_currentUser.useCustomLocation,
+                        value: !UserModelRepository.instance.currentUser.useCustomLocation,
                         onChanged: (value) {
                           setState(() {
-                            _currentUser.useCustomLocation = !value;
+                            UserModelRepository.instance.currentUser.useCustomLocation = !value;
                             if (value) {
                               UserModelRepository.instance
                                   .setUserLocation();
@@ -111,9 +110,9 @@ class ContactPageState extends State<ContactPage>
                     FlatButton(
                       child: Text("Save new Position"),
                       onPressed: () {
-                        _currentUser.currentLocation = UserLocation(
+                        UserModelRepository.instance.currentUser.currentLocation = UserLocation(
                             myLocation.latitude, myLocation.longitude);
-                        _currentUser.useCustomLocation = true;
+                        UserModelRepository.instance.currentUser.useCustomLocation = true;
                         UserModelRepository.instance
                             .unsubscribeLocationChanges();
                       },

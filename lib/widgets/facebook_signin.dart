@@ -24,7 +24,7 @@
 //       Toast.show("Logged in successfully", context,
 //           duration: Toast.LENGTH_LONG, gravity: Toast.TOP);
 
-//       Navigator.push(
+//      Navigator .push(
 //           context,
 //           MaterialPageRoute(
 //               builder: (context) => Chat(

@@ -1,18 +1,31 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:geoflutterfire/geoflutterfire.dart';
 import 'package:talker_app/common/constants.dart';
 import 'package:talker_app/common/functions/data_repository.dart';
 import 'package:talker_app/common/models/conversation_model.dart';
 import 'package:talker_app/common/models/user_model.dart';
 import 'package:talker_app/common/string_values.dart';
+import 'package:talker_app/pages/map.dart';
+import 'package:talker_app/pages/maps_location.dart';
 import 'package:toast/toast.dart';
-import 'package:geolocator/geolocator.dart';
 
-class Chat extends StatelessWidget {
+class Chat extends StatefulWidget {
   final String roomId;
   final String title;
   Chat({Key key, @required this.roomId, this.title = ""}) : super(key: key);
+  _ChatState createState() => _ChatState();
+}
+
+class _ChatState extends State<Chat> {
+  double sliderValue = 0.0;
+  onChanged(double value) {
+    setState(() {
+      sliderValue = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,12 +34,54 @@ class Chat extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: new Text(
-            title == null ? "" : title,
+            widget.title == null ? "" : widget.title,
             style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.settings),
+              tooltip: 'Change distsance',
+              onPressed: () {
+                showDialog(
+                    context: context,
+                    builder: (BuildContext context) => AlertDialog(
+                            title: const Text('Set Distanceees'),
+                            content: Container(
+                              height: 200.0,
+                              child: Column(
+                                children: <Widget>[
+                                  Slider(
+                                    min: 0.0,
+                                    max: 5000.0,
+                                    divisions: 20,
+                                    value: sliderValue,
+                                    label: sliderValue.round().toString(),
+                                    onChanged: (double value) {
+                                      setState(() {
+                                        sliderValue = value;
+                                      });
+                                    },
+                                  ),
+                                  Text(
+                                      "Current distance is :$sliderValue meters"),
+                                ],
+                              ),
+                            ),
+                            actions: <Widget>[
+                              FlatButton(
+                                  child: const Text('Cancesl'),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  }),
+                              FlatButton(
+                                  child: const Text('Save'), onPressed: () {})
+                            ]));
+              },
+            ),
+          ],
         ),
-        body: ChatScreen(roomId: roomId),
+        body: ChatScreen(roomId: widget.roomId),
       ),
     );
   }
@@ -36,6 +91,65 @@ class Chat extends StatelessWidget {
     return Future.value(true);
   }
 }
+// class Chat extends StatelessWidget {
+//   final String roomId;
+//   final String title;
+//   Chat({Key key, @required this.roomId, this.title = ""}) : super(key: key);
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return WillPopScope(
+//       onWillPop: _backButtonPressed,
+//       child: Scaffold(
+//         appBar: AppBar(
+//           // title: new Text(
+//           //   title == null ? "" : title,
+//           //   style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+//           // ),
+//           // centerTitle: true,
+//           actions: <Widget>[
+//             IconButton(
+//               icon: Icon(Icons.settings),
+//               tooltip: 'Change distance',
+//               onPressed: () {
+//                   showDialog(
+//                       context: context,
+//                       builder: (BuildContext context) => AlertDialog(
+//                               title: const Text('Set Distance'),
+//                               content:
+//                               Slider(
+
+//                                 min: 0.0,
+//                                 max: 5000.0,
+//                                 value: 500.0,
+//                                 onChanged: (value){},),
+//                               actions: <Widget>[
+//                                 FlatButton(
+//                                     child: const Text('Cancel'),
+//                                     onPressed: () {
+//                                       Navigator.pop(context);
+//                                     }),
+//                                 FlatButton(
+//                                     child: const Text('Save'),
+//                                     onPressed: () {
+
+//                                     })
+//                               ]));
+//                 },
+//             ),
+
+//           ],
+//         ),
+//         body: ChatScreen(roomId: roomId),
+//       ),
+//     );
+//   }
+
+//   Future<bool> _backButtonPressed() async {
+//     DataRepository.instance.removeUserActiveRoom();
+//     return Future.value(true);
+//   }
+// }
 
 class ChatScreen extends StatefulWidget {
   final String roomId;
@@ -49,30 +163,24 @@ class ChatScreenState extends State<ChatScreen> {
   final String roomId;
   ChatScreenState({Key key, this.roomId});
 
-  final UserModel _currentUser = UserModelRepository.instance.currentUser;
   final DataRepository _dataInstance = DataRepository.instance;
   final TextEditingController textEditingController = TextEditingController();
   final ScrollController listScrollController = ScrollController();
   final FocusNode focusNode = FocusNode();
   bool isLoading = false;
+  double sliderValue = 500.0;
 
-  var listMessage;
+  List<DocumentSnapshot> listMessage;
 
   void onSendMessage(String content, int type) async {
     if (content.trim() != '') {
       textEditingController.clear();
 
       var newConversation = ConversationModel(
-        senderId: _currentUser.uid,
-        sender: _currentUser.displayName,
+        senderId: UserModelRepository.instance.currentUser.uid,
+        sender: UserModelRepository.instance.currentUser.displayName,
         text: content,
         roomId: roomId,
-        latitude: _currentUser.currentLocation != null
-            ? _currentUser.currentLocation.latitude
-            : 0.0,
-        longitude: _currentUser.currentLocation != null
-            ? _currentUser.currentLocation.longitude
-            : 0.0,
       );
       await _dataInstance.sendNewMessage(newConversation);
       listScrollController.animateTo(0.0,
@@ -101,7 +209,8 @@ class ChatScreenState extends State<ChatScreen> {
   bool isLastMessageRight(int index) {
     if ((index > 0 &&
             listMessage != null &&
-            listMessage[index - 1][FieldKeys.senderId] != _currentUser.uid) ||
+            listMessage[index - 1][FieldKeys.senderId] !=
+                UserModelRepository.instance.currentUser.uid) ||
         index == 0) {
       return true;
     } else {
@@ -130,7 +239,42 @@ class ChatScreenState extends State<ChatScreen> {
             ],
           ),
           // Loading
-          buildLoading()
+          buildLoading(),
+          Positioned(
+            top: 10,
+            left: 10,
+            right: 10,
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                      blurRadius: 2.5,
+                      spreadRadius: 5.0,
+                      color: Colors.black.withOpacity(.12))
+                ],
+                color: Color(0xFFA4B0BD),
+                borderRadius: BorderRadius.all(Radius.circular(25.0)),
+              ),
+              height: 50.0,
+              child: Column(
+                children: <Widget>[
+                  Slider(
+                    min: 0.0,
+                    max: 5000.0,
+                    divisions: 50,
+                    value: sliderValue,
+                    label: sliderValue.round().toString(),
+                    onChanged: (double value) {
+                      setState(() {
+                        sliderValue = value;
+                      });
+                    },
+                  ),
+                  Text("Current distance is :$sliderValue meters"),
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );
@@ -139,7 +283,8 @@ class ChatScreenState extends State<ChatScreen> {
   Widget buildListMessage() {
     return Flexible(
       child: StreamBuilder(
-        stream: _dataInstance.getConversationsOnChatRoom(roomId: roomId),
+        stream: _dataInstance.getConversationsOnChatRoom(
+            roomId: roomId, distance: sliderValue),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(
@@ -147,13 +292,17 @@ class ChatScreenState extends State<ChatScreen> {
                     valueColor: AlwaysStoppedAnimation<Color>(themeColor)));
           } else {
             isLoading = false;
-            listMessage = snapshot.data.documents;
+            listMessage = snapshot.data;
+            listMessage.sort((a, b) =>
+                a.data["timestampInt"].compareTo(b.data["timestampInt"]) *
+                (-1));
+            listMessage = listMessage.reversed.toList();
             _dataInstance.updateRoomLastAccessTime(roomId);
             return ListView.builder(
               padding: EdgeInsets.all(10.0),
               itemBuilder: (context, index) =>
-                  buildItem(index, snapshot.data.documents[index]),
-              itemCount: snapshot.data.documents.length,
+                  buildItem(index, snapshot.data[index]),
+              itemCount: snapshot.data.length,
               reverse: true,
               controller: listScrollController,
             );
@@ -165,20 +314,22 @@ class ChatScreenState extends State<ChatScreen> {
 
   Widget buildItem(int index, dynamic document) {
     final message = ConversationModel.fromSnapshot(document);
-    String content = message.text;
     String senderId = message.senderId;
     DateTime date = message.timestamp;
     return Container(
       padding: EdgeInsets.all(3.0),
       child: Column(
-        crossAxisAlignment: senderId == _currentUser.uid
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
+        crossAxisAlignment:
+            senderId == UserModelRepository.instance.currentUser.uid
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
         children: [
           showAvatar(index)
-              ? photoLayout(message, senderId == _currentUser.uid)
+              ? photoLayout(message,
+                  senderId == UserModelRepository.instance.currentUser.uid)
               : Container(),
-          messageLayout(message, senderId != _currentUser.uid)
+          messageLayout(
+              message, senderId != UserModelRepository.instance.currentUser.uid)
         ],
 
         // senderId == _currentUser.uid
@@ -237,9 +388,10 @@ class ChatScreenState extends State<ChatScreen> {
         //       bottom: isLastMessageRight(index) ? 20.0 : 10.0, right: 10.0),
         // )
         // ],
-        mainAxisAlignment: senderId == _currentUser.uid
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            senderId == UserModelRepository.instance.currentUser.uid
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
       ),
     );
   }
@@ -261,7 +413,8 @@ class ChatScreenState extends State<ChatScreen> {
                         height: 40.0,
                         decoration: new BoxDecoration(
                             shape: BoxShape.circle,
-                            image: _currentUser.photoUrl.isEmpty
+                            image: UserModelRepository
+                                    .instance.currentUser.photoUrl.isEmpty
                                 ? DecorationImage(
                                     image: ExactAssetImage('assets/user.png'),
                                     fit: BoxFit.cover,
@@ -282,7 +435,8 @@ class ChatScreenState extends State<ChatScreen> {
                   height: 40.0,
                   decoration: new BoxDecoration(
                       shape: BoxShape.circle,
-                      image: _currentUser.photoUrl.isEmpty
+                      image: UserModelRepository
+                              .instance.currentUser.photoUrl.isEmpty
                           ? DecorationImage(
                               image: ExactAssetImage('assets/user.png'),
                               fit: BoxFit.cover,
@@ -335,30 +489,52 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   Widget getDistance(ConversationModel model) {
-    return FutureBuilder<double>(
-        future: Geolocator().distanceBetween(
-            model.location.latitude,
-            model.location.longitude,
-            _currentUser.currentLocation.latitude,
-            _currentUser.currentLocation
-                .longitude), // a previously-obtained Future<String> or null
-        builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.none:
-              return Text('Press button to start.');
-            case ConnectionState.active:
-            case ConnectionState.waiting:
-              return Text('Distance calculating');
-            case ConnectionState.done:
-              if (snapshot.hasError) return Text('Error: ${snapshot.error}');
-              return Text("${snapshot.data.floor()} meters away");
-          }
-          return null; // unreachable
-        });
+    Geoflutterfire geo = Geoflutterfire();
+    // return FutureBuilder<double>(
+
+    //     future: Geolocator().distanceBetween(
+    //         model.geoPoint.latitude,
+    //         model.geoPoint.longitude,
+    //         UserModelRepository.instance.currentUser.currentLocation.latitude,
+    //         UserModelRepository.instance.currentUser.currentLocation
+    //             .longitude), // a previously-obtained Future<String> or null
+    //     builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
+    //       switch (snapshot.connectionState) {
+    //         case ConnectionState.none:
+    //           return Text('Press button to start.');
+    //         case ConnectionState.active:
+    //         case ConnectionState.waiting:
+    //           return Text('Distance calculating');
+    //         case ConnectionState.done:
+    //           if (snapshot.hasError) return Text('Error: ${snapshot.error}');
+    //           return Text("${snapshot.data.floor()} meters away");
+    //       }
+    //       return null; // unreachable
+    //     });
+    double distance = geo
+        .point(
+            latitude: model.geoPoint.latitude,
+            longitude: model.geoPoint.longitude)
+        .distance(
+            lat: UserModelRepository
+                .instance.currentUser.currentLocation.latitude,
+            lng: UserModelRepository
+                .instance.currentUser.currentLocation.longitude);
+    return Text("${(distance * 1000).floor()} meters away");
   }
 
   Widget messageLayout(ConversationModel model, bool isLeft) {
     return GestureDetector(
+      onDoubleTap: () {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    // BubbleScreen()
+                    GoogleMapLocation(
+                        latitude: model.geoPoint.latitude,
+                        longitude: model.geoPoint.longitude)));
+      },
       onLongPress: () {
         showDialog(
             context: context,
@@ -459,7 +635,8 @@ class ChatScreenState extends State<ChatScreen> {
                     shape: BoxShape.circle,
                     image: DecorationImage(
                       image: isRight
-                          ? NetworkImage(_currentUser.photoUrl)
+                          ? NetworkImage(
+                              UserModelRepository.instance.currentUser.photoUrl)
                           : ExactAssetImage('assets/user.png'),
                       fit: BoxFit.cover,
                     ))),
